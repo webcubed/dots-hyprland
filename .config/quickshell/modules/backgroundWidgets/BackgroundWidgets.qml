@@ -114,15 +114,17 @@ Scope {
                             Layout.fillWidth: true
                             horizontalAlignment: windowRoot.textHorizontalAlignment
                             font.pixelSize: 95
+							font.family: "JetBrainsMono Nerd Font"
                             color: root.colText
                             style: Text.Raised
                             styleColor: Appearance.colors.colShadow
-                            text: DateTime.time
+                            text: DateTime.timeWithSeconds
                         }
                         StyledText {
                             Layout.fillWidth: true
                             horizontalAlignment: windowRoot.textHorizontalAlignment
                             font.pixelSize: 25
+							font.family: "JetBrainsMono Nerd Font"
                             color: root.colText
                             style: Text.Raised
                             styleColor: Appearance.colors.colShadow

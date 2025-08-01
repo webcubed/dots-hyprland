@@ -179,7 +179,7 @@ Singleton {
             }
 
             property JsonObject resources: JsonObject {
-                property int updateInterval: 3000
+                property int updateInterval: 1000
             }
 
             property JsonObject search: JsonObject {
@@ -211,7 +211,7 @@ Singleton {
             property JsonObject time: JsonObject {
                 // https://doc.qt.io/qt-6/qtime.html#toString
                 property string format: "hh:mm"
-                property string dateFormat: "ddd, dd/MM"
+                property string dateFormat: "dddd, dd/MM"
             }
 
             property JsonObject windows: JsonObject {

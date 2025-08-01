@@ -15,6 +15,7 @@ import Quickshell
 import Quickshell.Widgets
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Quickshell.Services.Notifications
 
 Scope {
     id: root
@@ -52,6 +53,7 @@ Scope {
             }
         }
 
+
         Loader {
             id: sidebarContentLoader
             active: GlobalStates.sidebarRightOpen
@@ -69,12 +71,23 @@ Scope {
             height: parent.height - Appearance.sizes.hyprlandGapsOut * 2
 
             focus: GlobalStates.sidebarRightOpen
-            Keys.onPressed: (event) => {
+            Keys.onReleased: (event) => {
                 if (event.key === Qt.Key_Escape) {
                     sidebarRoot.hide();
+                } else if (event.key === Qt.Key_Down) {
+					// Switch to TODO tab
+					event.accepted = true;
+				} else if (event.key === Qt.Key_Up) {
+					// Switch to calendar tab
+					event.accepted = true;
+				}
+                else if (event.modifiers == Qt.ControlModifier) {
+                    if (event.key === Qt.Key_L) {
+                        Notifications.discardAllNotifications();
+                        event.accepted = true
+                    }
                 }
             }
-
             sourceComponent: Item {
                 implicitHeight: sidebarRightBackground.implicitHeight
                 implicitWidth: sidebarRightBackground.implicitWidth

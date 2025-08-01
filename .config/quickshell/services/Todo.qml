@@ -31,6 +31,11 @@ Singleton {
         addItem(item)
     }
 
+    function markDoneByContent(content, occurance = 1) {
+		const index = list.findIndex((item) => item.content === content)
+		markDone(index)
+	}
+
     function markDone(index) {
         if (index >= 0 && index < list.length) {
             list[index].done = true

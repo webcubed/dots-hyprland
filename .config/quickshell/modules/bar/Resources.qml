@@ -23,7 +23,7 @@ Item {
         anchors.rightMargin: 4
 
         Resource {
-            iconName: "memory"
+            iconName: "memory_alt"
             percentage: ResourceUsage.memoryUsedPercentage
         }
 
@@ -37,7 +37,7 @@ Item {
         }
 
         Resource {
-            iconName: "settings_slow_motion"
+            iconName: "memory"
             percentage: ResourceUsage.cpuUsage
             shown: Config.options.bar.resources.alwaysShowCpu || 
                 !(MprisController.activePlayer?.trackTitle?.length > 0) ||

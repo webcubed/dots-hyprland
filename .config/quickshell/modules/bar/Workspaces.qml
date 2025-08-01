@@ -127,7 +127,9 @@ Item {
         radius: Appearance.rounding.full
         color: Appearance.colors.colPrimary
         anchors.verticalCenter: parent.verticalCenter
-
+/*        color: "#00000000"
+		border.color: Appearance.m3colors.m3primary
+		border.width: 2*/
         property real idx1: workspaceIndexInGroup
         property real idx2: workspaceIndexInGroup
         x: Math.min(idx1, idx2) * workspaceButtonWidth + activeWorkspaceMargin

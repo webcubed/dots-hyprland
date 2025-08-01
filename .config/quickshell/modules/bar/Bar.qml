@@ -186,7 +186,7 @@ Scope {
                                 implicitWidth: distroIcon.width + buttonPadding * 2
                                 implicitHeight: distroIcon.height + buttonPadding * 2
 
-                                buttonRadius: Appearance.rounding.full
+                                buttonRadius: Appearance.rounding.screenRounding
                                 colBackground: barLeftSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                                 colBackgroundHover: Appearance.colors.colLayer1Hover
                                 colRipple: Appearance.colors.colLayer1Active
@@ -205,9 +205,10 @@ Scope {
                                     anchors.centerIn: parent
                                     width: 19.5
                                     height: 19.5
-                                    source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : "spark-symbolic"
+                                    source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : "arch-symbolic"
                                     colorize: true
-                                    color: Appearance.colors.colOnLayer0
+                                    // color: Appearance.colors.colOnLayer0
+									color: "#8aadf4"
                                 }
                             }
 
@@ -399,13 +400,13 @@ Scope {
                                 implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
                                 implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
-                                buttonRadius: Appearance.rounding.full
-                                colBackground: barRightSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
-                                colBackgroundHover: Appearance.colors.colLayer1Hover
-                                colRipple: Appearance.colors.colLayer1Active
-                                colBackgroundToggled: Appearance.colors.colSecondaryContainer
-                                colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
-                                colRippleToggled: Appearance.colors.colSecondaryContainerActive
+                                buttonRadius: 8
+                                colBackground: "#24273a"
+                                colBackgroundHover: "#24273a"
+                                colRipple: "#363a4f"
+                                colBackgroundToggled: "#24273a"
+                                colBackgroundToggledHover: "#24273a"
+                                colRippleToggled: "#363a4f"
                                 toggled: GlobalStates.sidebarRightOpen
                                 property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
@@ -437,7 +438,7 @@ Scope {
                                         MaterialSymbol {
                                             text: "volume_off"
                                             iconSize: Appearance.font.pixelSize.larger
-                                            color: rightSidebarButton.colText
+                                            color: "#8aadf4"
                                         }
                                     }
                                     Revealer {
@@ -454,19 +455,19 @@ Scope {
                                         MaterialSymbol {
                                             text: "mic_off"
                                             iconSize: Appearance.font.pixelSize.larger
-                                            color: rightSidebarButton.colText
+                                            color: "#8aadf4"
                                         }
                                     }
                                     MaterialSymbol {
                                         Layout.rightMargin: indicatorsRowLayout.realSpacing
                                         text: Network.materialSymbol
                                         iconSize: Appearance.font.pixelSize.larger
-                                        color: rightSidebarButton.colText
+                                        color: "#8aadf4"
                                     }
                                     MaterialSymbol {
                                         text: Bluetooth.bluetoothConnected ? "bluetooth_connected" : Bluetooth.bluetoothEnabled ? "bluetooth" : "bluetooth_disabled"
                                         iconSize: Appearance.font.pixelSize.larger
-                                        color: rightSidebarButton.colText
+                                        color: "#8aadf4"
                                     }
                                 }
                             }

@@ -111,7 +111,7 @@ Scope {
                         id: sessionLogout
                         buttonIcon: "logout"
                         buttonText: qsTr("Logout")
-                        onClicked: { Hyprland.dispatch("exec pkill Hyprland"); sessionRoot.hide() }
+                        onClicked: { Hyprland.dispatch("exit"); sessionRoot.hide() }
                         onFocusChanged: { if (focus) sessionRoot.subtitle = buttonText }
                         KeyNavigation.left: sessionSleep
                         KeyNavigation.right: sessionTaskManager

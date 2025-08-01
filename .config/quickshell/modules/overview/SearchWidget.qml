@@ -67,11 +67,26 @@ Item { // Wrapper
             }
         },
         {
-            action: "todo",
+            action: "do",
             execute: (args) => {
                 Todo.addTask(args)
             }
         },
+		{
+			action: "done",
+			execute: (args) => {
+				Todo.markDoneByContent(args)
+			}
+		},
+		{
+			action: "dci",
+			execute: (args) => {
+				// Clear clipboard entry of index specified by args
+				// dci for delete clipboard item
+				Quickshell.execDetached(["bash", "-c", `cliphist delete-query $(cliphist decode ${args})`])
+
+			}
+		},
     ]
 
     function focusFirstItemIfNeeded() {
@@ -294,7 +309,11 @@ Item { // Wrapper
                     values: { // Search results are handled here
                         ////////////////// Skip? //////////////////
                         if(root.searchingText == "") return [];
-
+                        if (root.searchingText.startsWith("d ")) { // dictionary
+							const searchString = root.searchingText.slice(2);
+							// Fetch and return list of potential words, description being the definitions
+							
+						}
                         ///////////// Special cases ///////////////
                         if (root.searchingText.startsWith(Config.options.search.prefix.clipboard)) { // Clipboard
                             const searchString = root.searchingText.slice(Config.options.search.prefix.clipboard.length);
@@ -312,7 +331,7 @@ Item { // Wrapper
                                 };
                             }).filter(Boolean);
                         } 
-                        if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) { // Clipboard
+                        if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) { // Emojis
                             const searchString = root.searchingText.slice(Config.options.search.prefix.emojis.length);
                             return Emojis.fuzzyQuery(searchString).map(entry => {
                                 return {

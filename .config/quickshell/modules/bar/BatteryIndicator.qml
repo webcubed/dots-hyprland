@@ -10,10 +10,10 @@ import Quickshell.Services.UPower
 Item {
     id: root
     property bool borderless: Config.options.bar.borderless
-    readonly property var chargeState: Battery.chargeState
-    readonly property bool isCharging: Battery.isCharging
-    readonly property bool isPluggedIn: Battery.isPluggedIn
-    readonly property real percentage: Battery.percentage
+    readonly property var chargeState: UPower.displayDevice.state
+    readonly property bool isCharging: chargeState == UPowerDeviceState.Charging
+    readonly property bool isPluggedIn: isCharging || chargeState == UPowerDeviceState.PendingCharge
+    readonly property real percentage: UPower.displayDevice.percentage
     readonly property bool isLow: percentage <= Config.options.battery.low / 100
     readonly property color batteryLowBackground: Appearance.m3colors.darkmode ? Appearance.m3colors.m3error : Appearance.m3colors.m3errorContainer
     readonly property color batteryLowOnBackground: Appearance.m3colors.darkmode ? Appearance.m3colors.m3errorContainer : Appearance.m3colors.m3error
@@ -37,7 +37,7 @@ Item {
 
         StyledText {
             Layout.alignment: Qt.AlignVCenter
-            color: Appearance.colors.colOnLayer1
+            color: "#cad3f5"
             text: `${Math.round(percentage * 100)}`
         }
 
@@ -55,7 +55,7 @@ Item {
                 fill: 1
                 text: "battery_full"
                 iconSize: Appearance.font.pixelSize.normal
-                color: (isLow && !isCharging) ? batteryLowOnBackground : Appearance.m3colors.m3onSecondaryContainer
+                color: (isLow && !isCharging) ? batteryLowOnBackground : "#cad3f5"
             }
 
         }
