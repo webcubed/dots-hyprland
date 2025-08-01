@@ -170,7 +170,7 @@ Singleton {
 			property string iconFA: "Font Awesome 6 Pro"
             property string monospace: "JetBrains Mono NF"
             property string reading: "Readex Pro"
-            property string expressive: "Space Grotesk"
+            property string expressive: "Google Sans"
         }
         property QtObject pixelSize: QtObject {
             property int smallest: 10
