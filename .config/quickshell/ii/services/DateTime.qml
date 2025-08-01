@@ -11,7 +11,7 @@ pragma ComponentBehavior: Bound
 Singleton {
     property var clock: SystemClock {
         id: clock
-        precision: SystemClock.Minutes
+        precision: SystemClock.Seconds
     }
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
 	// Time w/ seconds
@@ -20,10 +20,6 @@ Singleton {
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
     property string uptime: "0y, 0m, 0d, 0s"
 
-    SystemClock {
-        id: clock
-        precision: SystemClock.Seconds
-    }
 	Timer {
 		interval: 10
 		running: true

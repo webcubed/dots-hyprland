@@ -134,10 +134,6 @@ Item {
                 }
             }
         }
-        RowLayout {
-            anchors.fill: parent
-            anchors.margins: 5
-            spacing: 5
 
         Item { // Windows & focused workspace indicator
             id: windowSpace
@@ -246,53 +242,27 @@ Item {
                 }
             }
 
-            RowLayout {
-                Layout.alignment: Qt.AlignRight
-
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "power_settings_new"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Quickshell.execDetached(["bash", "-c", `systemctl poweroff || loginctl poweroff`]); }
+            Rectangle { // Focused workspace indicator
+                id: focusedWorkspaceIndicator
+                property int activeWorkspaceInGroup: monitor.activeWorkspace?.id - (root.workspaceGroup * root.workspacesShown)
+                property int activeWorkspaceRowIndex: Math.floor((activeWorkspaceInGroup - 1) / Config.options.overview.columns)
+                property int activeWorkspaceColIndex: (activeWorkspaceInGroup - 1) % Config.options.overview.columns
+                x: (root.workspaceImplicitWidth + workspaceSpacing) * activeWorkspaceColIndex
+                y: (root.workspaceImplicitHeight + workspaceSpacing) * activeWorkspaceRowIndex
+                z: root.windowZ
+                width: root.workspaceImplicitWidth
+                height: root.workspaceImplicitHeight
+                color: "transparent"
+                radius: Appearance.rounding.screenRounding * root.scale
+                border.width: 2
+                border.color: root.activeBorderColor
+                Behavior on x {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "restart_alt"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Quickshell.execDetached(["bash", "-c", `reboot || loginctl reboot`]); }
-                }
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "downloading"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Quickshell.execDetached(["bash", "-c", `systemctl hibernate || loginctl hibernate`]); }
-                }
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "dark_mode"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Quickshell.execDetached(["bash", "-c", `systemctl suspend || loginctl suspend`]); }
-                }
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "lock"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Hyprland.dispatch("exec loginctl lock-session"); }
-                }
-                SessionActionButton {
-                    MaterialSymbol {
-                        text: "logout"
-                        iconSize: Appearance.font.pixelSize.large
-                    }
-                    onPressed: { Hyprland.dispatch("exit"); }
+                Behavior on y {
+                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                 }
             }
         }
-    }
     }
 }
