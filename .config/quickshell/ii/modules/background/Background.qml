@@ -213,7 +213,7 @@ Scope {
                         color: bgRoot.colText
                         style: Text.Raised
                         styleColor: Appearance.colors.colShadow
-                        text: DateTime.time
+                        text: DateTime.timeWithSeconds
                     }
                     StyledText {
                         Layout.fillWidth: true
@@ -227,7 +227,7 @@ Scope {
                         color: bgRoot.colText
                         style: Text.Raised
                         styleColor: Appearance.colors.colShadow
-                        text: DateTime.date
+                        text: DateTime.dateLong
                     }
                 }
 

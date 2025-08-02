@@ -17,6 +17,9 @@ Singleton {
 	// Time w/ seconds
 	property string timeWithSeconds: Qt.locale().toString(new Date(), "hh:mm:ss")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
+	property string dateMid: Qt.locale().toString(clock.date, "dddd, dd/MM")
+	property string dateLong: Qt.locale().toString(clock.date, "dddd, dd/MM/yyyy")
+	property string dateTextLong: Qt.locale().toString(clock.date, "dddd, dd MMMM yyyy")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
     property string uptime: "0y, 0m, 0d, 0s"
 
