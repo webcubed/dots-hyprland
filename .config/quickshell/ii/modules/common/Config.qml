@@ -266,6 +266,9 @@ Singleton {
             property JsonObject screenshotTool: JsonObject {
                 property bool showContentRegions: true
             }
+			property JsonObject storage: JsonObject {
+				property string lastFmApiKey: ""
+			}
         }
     }
 }

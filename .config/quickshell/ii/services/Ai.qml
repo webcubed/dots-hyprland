@@ -91,6 +91,16 @@ Singleton {
                     "name": "get_shell_config",
                     "description": "Get the desktop shell config file contents",
                 },
+				{"name":"get_fetch_request", "description": "Fetch a URL and return its contents", "parameters": {
+					"type": "object",
+					"properties": {
+						"url": {
+							"type": "string",
+							"description": "The URL to fetch, e.g. `https://example.com`"
+						}
+					},
+					"required": ["url"]
+					}},
                 {
                     "name": "set_shell_config",
                     "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
@@ -781,6 +791,27 @@ Singleton {
         }
     }
 
+	// Function to use curl and return result (similar to commandexecutionproc/approvecommand functions and processes)
+	Process {
+		id: fetchCommandProc
+		property string fetchCommand: ""
+		property AiMessageData message
+		command: ["bash", "-c", fetchCommand]
+		stdout: SplitParser {
+			onRead: (output) => {
+				fetchCommandProc.message.functionResponse += output + "\n\n";
+				const updatedContent = fetchCommandProc.message.rawContent + `\n\n<think>\n<tt>${fetchCommandProc.message.functionResponse}</tt>\n</think>`;
+				fetchCommandProc.message.rawContent = updatedContent;
+				fetchCommandProc.message.content = updatedContent;
+			}
+		}
+		onExited: (exitCode, exitStatus) => {
+			fetchCommandProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
+			requester.makeRequest(); // Continue
+		}
+	}
+
+
     function handleFunctionCall(name, args: var, message: AiMessageData) {
         if (name === "switch_to_search_mode") {
             const modelId = root.currentModelId;
@@ -809,7 +840,19 @@ Singleton {
             message.rawContent += contentToAppend;
             message.content += contentToAppend;
             message.functionPending = true; // Use thinking to indicate the command is waiting for approval
-        }
+        } else if (name === "get_fetch_request") {
+			if (!args.url || args.url.length === 0) {
+				addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `url`."));
+				return;
+			}
+			const url = args.url;
+			fetchCommandProc.message = createFunctionOutputMessage("get_fetch_request", "", false);
+            const id = idForMessage(fetchCommandProc.message);
+            root.messageIDs = [...root.messageIDs, id];
+            root.messageByID[id] = fetchCommandProc.message;
+            fetchCommandProc.fetchCommand = `curl --no-buffer "${url}"`;
+            fetchCommandProc.running = true;
+		}
         else root.addMessage(Translation.tr("Unknown function call: %1").arg(name), "assistant");
     }
 
