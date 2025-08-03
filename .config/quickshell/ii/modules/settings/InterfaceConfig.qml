@@ -336,6 +336,20 @@ ContentPage {
     }
 
     ContentSection {
+        title: Translation.tr("Sidebars")
+        ConfigSwitch {
+            text: Translation.tr('Keep right sidebar loaded')
+            checked: Config.options.sidebar.keepRightSidebarLoaded
+            onCheckedChanged: {
+                Config.options.sidebar.keepRightSidebarLoaded = checked;
+            }
+            StyledToolTip {
+                content: Translation.tr("When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help")
+            }
+        }
+    }
+
+    ContentSection {
         title: Translation.tr("On-screen display")
         ConfigSpinBox {
             text: Translation.tr("Timeout (ms)")
