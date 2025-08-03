@@ -101,6 +101,46 @@ Singleton {
 					},
 					"required": ["url"]
 					}},
+				{
+					"name": "playerctl",
+					"description": "Control media playback using playerctl",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "The playerctl command to run, e.g. `play-pause`"
+							}
+						},
+						"required": ["action"]
+					}
+				},
+				{
+					"name": "spotifyctl",
+					"description": "Control spotify playback using go-spotify-cli",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"action": {
+								"type": "string",
+								"description": "The action to run. Available Commands:
+  completion    Generate the autocompletion script for the specified shell
+  device        Get all connected devices
+  flush-secrets Flush Secrets
+  flush-tokens  Flush Tokens
+  help          Help about any command
+  next          Next spotify song
+  pause         Pause spotify song
+  play          Play spotify song
+  previous      Previous spotify song
+  saved         Saved spotify tracks
+  search        Search spotify song
+  volume        Set volume"
+							}
+						},
+						"required": ["action"]
+					}
+				},
                 {
                     "name": "set_shell_config",
                     "description": "Set a field in the desktop graphical shell config file. Must only be used after `get_shell_config`.",
@@ -810,7 +850,42 @@ Singleton {
 			requester.makeRequest(); // Continue
 		}
 	}
-
+	Process {
+		id: playerctlProc
+		property string playerctlCommand: ""
+		property AiMessageData message
+		command: ["bash", "-c", playerctlCommand]
+		stdout: SplitParser {
+			onRead: (output) => {
+				playerctlProc.message.functionResponse += output + "\n\n";
+				const updatedContent = playerctlProc.message.rawContent + `\n\n<think>\n<tt>${playerctlProc.message.functionResponse}</tt>\n</think>`;
+				playerctlProc.message.rawContent = updatedContent;
+				playerctlProc.message.content = updatedContent;
+			}
+		}
+		onExited: (exitCode, exitStatus) => {
+			playerctlProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
+			requester.makeRequest(); // Continue
+		}
+	}
+	Process {
+		id: spotifyctlProc
+		property string spotifyctlCommand: ""
+		property AiMessageData message
+		command: ["bash", "-c", spotifyctlCommand]
+		stdout: SplitParser {
+			onRead: (output) => {
+				spotifyctlProc.message.functionResponse += output + "\n\n";
+				const updatedContent = spotifyctlProc.message.rawContent + `\n\n<think>\n<tt>${spotifyctlProc.message.functionResponse}</tt>\n</think>`;
+				spotifyctlProc.message.rawContent = updatedContent;
+				spotifyctlProc.message.content = updatedContent;
+			}
+		}
+		onExited: (exitCode, exitStatus) => {
+			spotifyctlProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
+			requester.makeRequest(); // Continue
+		}
+	}
 
     function handleFunctionCall(name, args: var, message: AiMessageData) {
         if (name === "switch_to_search_mode") {
@@ -852,6 +927,34 @@ Singleton {
             root.messageByID[id] = fetchCommandProc.message;
             fetchCommandProc.fetchCommand = `curl --no-buffer "${url}"`;
             fetchCommandProc.running = true;
+		} else if (name === "playerctl") {
+			// must provide action, assume ai knows what to do
+			// use playerctlProc
+			if (!args.action || args.action.length === 0) {
+				addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `action`."));
+				return;
+			}
+			const action = args.action;
+			playerctlProc.message = createFunctionOutputMessage("playerctl", "", false);
+			const id = idForMessage(playerctlProc.message);
+			root.messageIDs = [...root.messageIDs, id];
+			root.messageByID[id] = playerctlProc.message;
+			playerctlProc.playerctlCommand = `playerctl ${action}`;
+			playerctlProc.running = true;
+		} else if (name === "spotifyctl") {
+			// must provide action, assume ai knows what to do
+			// use spotifyctlProc
+			if (!args.action || args.action.length === 0) {
+				addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `action`."));
+				return;
+			}
+			const action = args.action;
+			spotifyctlProc.message = createFunctionOutputMessage("spotifyctl", "", false);
+			const id = idForMessage(spotifyctlProc.message);
+			root.messageIDs = [...root.messageIDs, id];
+			root.messageByID[id] = spotifyctlProc.message;
+			spotifyctlProc.spotifyctlCommand = `spotifyctl ${action}`;
+			spotifyctlProc.running = true;
 		}
         else root.addMessage(Translation.tr("Unknown function call: %1").arg(name), "assistant");
     }
