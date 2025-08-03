@@ -949,7 +949,7 @@ Singleton {
 				return;
 			}
 			const action = args.action;
-			spotifyctlProc.message = createFunctionOutputMessage("spotifyctl", "", false);
+			spotifyctlProc.message = createFunctionOutputMessage("go-spotify-cli", "", false);
 			const id = idForMessage(spotifyctlProc.message);
 			root.messageIDs = [...root.messageIDs, id];
 			root.messageByID[id] = spotifyctlProc.message;
