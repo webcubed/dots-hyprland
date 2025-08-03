@@ -96,7 +96,7 @@ Singleton {
 					"properties": {
 						"url": {
 							"type": "string",
-							"description": "The URL to fetch, e.g. `https://example.com`"
+							"description": "The URL to fetch, e.g. `https://example.com` This comes after `curl `, so arguments can also be added."
 						}
 					},
 					"required": ["url"]
@@ -109,7 +109,7 @@ Singleton {
 						"properties": {
 							"action": {
 								"type": "string",
-								"description": "The playerctl command to run, e.g. `play-pause`"
+								"description": "The playerctl command to run, e.g. `play-pause`, `metadata`, etc"
 							}
 						},
 						"required": ["action"]
@@ -925,7 +925,7 @@ Singleton {
             const id = idForMessage(fetchCommandProc.message);
             root.messageIDs = [...root.messageIDs, id];
             root.messageByID[id] = fetchCommandProc.message;
-            fetchCommandProc.fetchCommand = `curl --no-buffer "${url}"`;
+            fetchCommandProc.fetchCommand = `curl "${url}"`;
             fetchCommandProc.running = true;
 		} else if (name === "playerctl") {
 			// must provide action, assume ai knows what to do
