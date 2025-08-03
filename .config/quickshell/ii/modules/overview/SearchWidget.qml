@@ -80,6 +80,13 @@ Item { // Wrapper
 			}
 		},
 		{
+			action: "ai",
+			execute: (args) => {
+				// Prompt ai w/ something
+				Ai.sendUserMessage(args)
+			}
+		},
+		{
 			action: "dci",
 			execute: (args) => {
 				// Clear clipboard entry of index specified by args
