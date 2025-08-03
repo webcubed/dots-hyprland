@@ -953,7 +953,7 @@ Singleton {
 			const id = idForMessage(spotifyctlProc.message);
 			root.messageIDs = [...root.messageIDs, id];
 			root.messageByID[id] = spotifyctlProc.message;
-			spotifyctlProc.spotifyctlCommand = `spotifyctl ${action}`;
+			spotifyctlProc.spotifyctlCommand = `go-spotify-cli ${action}`;
 			spotifyctlProc.running = true;
 		}
         else root.addMessage(Translation.tr("Unknown function call: %1").arg(name), "assistant");
