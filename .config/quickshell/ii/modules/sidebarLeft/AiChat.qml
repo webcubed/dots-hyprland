@@ -186,6 +186,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         },
     ]
 
+
     function handleInput(inputText) {
         if (inputText.startsWith(root.commandPrefix)) {
             // Handle special commands
