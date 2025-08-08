@@ -115,6 +115,20 @@ Singleton {
 						"required": ["action"]
 					}
 				},
+                       {
+                           "name": "read_file",
+                           "description": "Read the contents of a file and return its text. Only use for small files (less than 100KB).",
+                           "parameters": {
+                               "type": "object",
+                               "properties": {
+                                   "path": {
+                                       "type": "string",
+                                       "description": "Absolute path to the file to read."
+                                   }
+                               },
+                               "required": ["path"]
+                           }
+                       },
 				{
 					"name": "spotifyctl",
 					"description": "Control spotify playback using go-spotify-cli",
@@ -850,6 +864,24 @@ Singleton {
 			requester.makeRequest(); // Continue
 		}
 	}
+    Process {
+        id: fileReadProc
+        property string fileReadCommand: ""
+        property AiMessageData message
+        command: ["bash", "-c", fileReadCommand]
+        stdout: SplitParser {
+            onRead: (output) => {
+                fileReadProc.message.functionResponse += output + "\n\n";
+                const updatedContent = fileReadProc.message.rawContent + `\n\n<think>\n<tt>${fileReadProc.message.functionResponse}</tt>\n</think>`;
+                fileReadProc.message.rawContent = updatedContent;
+                fileReadProc.message.content = updatedContent;
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            fileReadProc.message.functionResponse += `[[ Command exited with code ${exitCode} (${exitStatus}) ]]\n`;
+            requester.makeRequest(); // Continue
+        }
+    }
 	Process {
 		id: playerctlProc
 		property string playerctlCommand: ""
@@ -915,6 +947,18 @@ Singleton {
             message.rawContent += contentToAppend;
             message.content += contentToAppend;
             message.functionPending = true; // Use thinking to indicate the command is waiting for approval
+            } else if (name === "read_file") {
+                if (!args.path || args.path.length === 0) {
+                    addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `path`."));
+                    return;
+                }
+                const filePath = args.path;
+                fileReadProc.message = createFunctionOutputMessage("read_file", "", false);
+                const id = idForMessage(fileReadProc.message);
+                root.messageIDs = [...root.messageIDs, id];
+                root.messageByID[id] = fileReadProc.message;
+                fileReadProc.fileReadCommand = `cat '${filePath.replace(/'/g, "'\\''")}' | head -c 100000`;
+                fileReadProc.running = true;
         } else if (name === "get_fetch_request") {
 			if (!args.url || args.url.length === 0) {
 				addFunctionOutputMessage(name, Translation.tr("Invalid arguments. Must provide `url`."));
