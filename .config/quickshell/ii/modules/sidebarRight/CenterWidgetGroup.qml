@@ -13,7 +13,7 @@ Rectangle {
     id: root
 
     property int selectedTab: 0
-    property var tabButtonList: [{"icon": "notifications", "name": Translation.tr("Notifications")}, {"icon": "volume_up", "name": Translation.tr("Volume mixer")}]
+    property var tabButtonList: [{"icon": "notifications", "name": Translation.tr("Notifications")}, {"icon": "volume_up", "name": Translation.tr("Audio")}]
 
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1

@@ -124,6 +124,14 @@ Singleton {
             }
 
             property JsonObject bar: JsonObject {
+                property JsonObject autoHide: JsonObject {
+                    property bool enable: false
+                    property bool pushWindows: false
+                    property JsonObject showWhenPressingSuper: JsonObject {
+                        property bool enable: true
+                        property int delay: 140
+                    }
+                }
                 property bool bottom: false // Instead of top
                 property int cornerStyle: 0 // 0: Hug | 1: Float | 2: Plain rectangle
                 property bool borderless: false // true for no grouping of items
@@ -181,6 +189,15 @@ Singleton {
                 property list<string> ignoredAppRegexes: []
             }
 
+            property JsonObject interactions: JsonObject {
+                property JsonObject scrolling: JsonObject {
+                    property bool fasterTouchpadScroll: true // Enable faster scrolling with touchpad
+                    property int mouseScrollDeltaThreshold: 120 // delta >= this then it gets detected as mouse scroll rather than touchpad
+                    property int mouseScrollFactor: 120
+                    property int touchpadScrollFactor: 450
+                }
+            }
+
             property JsonObject language: JsonObject {
                 property JsonObject translator: JsonObject {
                     property string engine: "auto" // Run `trans -list-engines` for available engines. auto should use google
@@ -196,6 +213,11 @@ Singleton {
                     property string to: "06:30"   // Format: "HH:mm", 24-hour time
                     property int colorTemperature: 5000
                 }
+            }
+
+            property JsonObject media: JsonObject {
+                // Attempt to remove dupes (the aggregator playerctl one and browsers' native ones when there's plasma browser integration)
+                property bool filterDuplicatePlayers: true
             }
 
             property JsonObject networking: JsonObject {
