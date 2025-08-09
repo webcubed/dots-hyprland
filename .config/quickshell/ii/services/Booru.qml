@@ -155,7 +155,7 @@ Singleton {
         "gelbooru": {
             "name": "Gelbooru",
             "url": "https://gelbooru.com",
-            "api": "https://gelbooru.com/index.php?page=dapi&s=post&q=index&json=1",
+            "api": "https://gelbooru.com/index.php?page=dapi" + Config.options.storage.gbapistring + "&s=post&q=index&json=1",
             "description": Translation.tr("The hentai one | Great quantity, a lot of NSFW, quality varies wildly"),
             "mapFunc": (response) => {
                 response = response.post
@@ -177,7 +177,7 @@ Singleton {
                     }
                 })
             },
-            "tagSearchTemplate": "https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1&orderby=count&name_pattern={{query}}%",
+            "tagSearchTemplate": "https://gelbooru.com/index.php?page=dapi&s=tag&q=index" + Config.options.storage.gbapistring +"&json=1&&orderby=count&name_pattern={{query}}%",
             "tagMapFunc": (response) => {
                 return response.tag.map(item => {
                     return {

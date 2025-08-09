@@ -292,6 +292,7 @@ Singleton {
 			property JsonObject storage: JsonObject {
 				property string lastFmApiKey: ""
 				property string wakaTimeApiKey: ""
+				property string gbapistring: ""
 			}
         }
     }
