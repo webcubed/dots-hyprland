@@ -20,10 +20,13 @@ Item {
         anchors.rightMargin: 4
 
         Resource {
-            iconName: "memory_alt"
-            percentage: ResourceUsage.memoryUsedPercentage
+            iconName: "memory"
+            percentage: ResourceUsage.cpuUsage
+            shown: Config.options.bar.resources.alwaysShowCpu || 
+                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
+                root.alwaysShowAllResources
+            Layout.leftMargin: shown ? 4 : 0
         }
-
         Resource {
             iconName: "swap_horiz"
             percentage: ResourceUsage.swapUsedPercentage
@@ -32,15 +35,15 @@ Item {
                 root.alwaysShowAllResources
             Layout.leftMargin: shown ? 4 : 0
         }
-
         Resource {
-            iconName: "memory"
-            percentage: ResourceUsage.cpuUsage
-            shown: Config.options.bar.resources.alwaysShowCpu || 
-                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
-                root.alwaysShowAllResources
-            Layout.leftMargin: shown ? 4 : 0
+            iconName: "memory_alt"
+            percentage: ResourceUsage.memoryUsedPercentage
+			Layout.leftMargin: 4
         }
+
+
+
+
 
     }
 
