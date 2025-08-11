@@ -230,6 +230,13 @@ Item {
 
 		// Active window section
 		Item {
+			id: root
+			readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.QsWindow.window?.screen)
+    readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
+
+    property string activeWindowAddress: `0x${activeWindow?.HyprlandToplevel?.address}`
+    property bool focusingThisMonitor: HyprlandData.activeWorkspace?.monitor == monitor?.name
+    property var biggestWindow: HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace.id)
             visible: dynamicIsland.showActiveWindow
             width: parent.width
             height: Appearance.sizes.barHeight
@@ -240,7 +247,9 @@ Item {
                 spacing: 2
                 StyledText {
                     id: activeWindowTitle
-                    text: ToplevelManager.activeToplevel ? ToplevelManager.activeToplevel.title : ToplevelManager.activeToplevel === null ? Translation.tr("Desktop") : ""
+                    text: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
+                root.activeWindow?.title :
+                (root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${root.monitor?.activeWorkspace?.id ?? 1}`
                     font.pixelSize: Appearance.font.pixelSize.small
                     color: "#cad3f5"
                     elide: Text.ElideRight
