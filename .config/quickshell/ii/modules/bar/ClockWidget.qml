@@ -20,7 +20,7 @@ Item {
         spacing: 4
 
         StyledText {
-            font.pixelSize: Appearance.font.pixelSize.normal
+            font.pixelSize: Appearance.font.pixelSize.small
             color: "#cad3f5"
             text: DateTime.timeWithSeconds
         }
