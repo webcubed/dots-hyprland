@@ -132,7 +132,7 @@ Item { // Bar content region
                     colBackground: barLeftSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colRipple: Appearance.colors.colLayer1Active
-                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggled: "#24273a"
                     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colRippleToggled: Appearance.colors.colSecondaryContainerActive
                     toggled: true
@@ -363,10 +363,10 @@ Item { // Bar content region
                     colBackground: barRightSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                     colBackgroundHover: Appearance.colors.colLayer1Hover
                     colRipple: Appearance.colors.colLayer1Active
-                    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+                    colBackgroundToggled: "#24273a"
                     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colRippleToggled: Appearance.colors.colSecondaryContainerActive
-                    toggled: GlobalStates.sidebarRightOpen
+                    toggled: true
                     property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
                     Behavior on colText {
