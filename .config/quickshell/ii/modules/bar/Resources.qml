@@ -30,9 +30,10 @@ Item {
         Resource {
             iconName: "swap_horiz"
             percentage: ResourceUsage.swapUsedPercentage
-            shown: (Config.options.bar.resources.alwaysShowSwap && percentage > 0) || 
+            /* shown: (Config.options.bar.resources.alwaysShowSwap && percentage > 0) || 
                 (MprisController.activePlayer?.trackTitle == null) ||
-                root.alwaysShowAllResources
+                root.alwaysShowAllResources */
+			shown: false
             Layout.leftMargin: shown ? 4 : 0
         }
         Resource {

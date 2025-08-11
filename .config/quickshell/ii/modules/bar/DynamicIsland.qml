@@ -229,23 +229,36 @@ Item {
 
 		// Active window section
 		Item {
-			visible: dynamicIsland.showActiveWindow
-			width: parent.width
-			height: parent.height
-			ColumnLayout {
-				anchors.fill: parent
-				spacing: 2
-				StyledText {
-					text: ToplevelManager.activeToplevel?.appId || Translation.tr("Desktop")
-					font.pixelSize: Appearance.font.pixelSize.normal
-					color: Appearance.colors.colOnLayer1
-				}
-				StyledText {
-					text: ToplevelManager.activeToplevel?.title || Translation.tr("No window")
-					font.pixelSize: Appearance.font.pixelSize.smaller
-					color: Appearance.colors.colSubtext
-				}
-			}
-		}
+            visible: dynamicIsland.showActiveWindow
+            width: parent.width
+            height: Appearance.sizes.barHeight
+            anchors.horizontalCenter: parent.horizontalCenter
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 2
+                StyledText {
+                    id: activeWindowTitle
+                    text: ToplevelManager.activeToplevel ? ToplevelManager.activeToplevel.title : ToplevelManager.activeToplevel === null ? Translation.tr("Desktop") : ""
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: "#cad3f5"
+                    elide: Text.ElideRight
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    clip: true
+                    onTextChanged: {
+                        if (activeWindowTitle.width > parent.width) {
+                            while (activeWindowTitle.width > parent.width && activeWindowTitle.font.pixelSize > 6) {
+                                activeWindowTitle.font.pixelSize -= 1;
+                            }
+                        } else {
+                            while (activeWindowTitle.width < parent.width && activeWindowTitle.font.pixelSize < Appearance.font.pixelSize.small) {
+                                activeWindowTitle.font.pixelSize += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 	}
 }
