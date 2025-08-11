@@ -65,6 +65,7 @@ Item {
 					Layout.maximumWidth: 250
 					Layout.fillHeight: true
 					Layout.alignment: Qt.AlignVCenter
+					Layout.leftMargin: 8
 
 					// Title/artist info
 					StyledText {
@@ -76,7 +77,7 @@ Item {
 							  `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}` :
 
 							  ""
-						font.pixelSize: Appearance.font.pixelSize.smaller
+						font.pixelSize: Appearance.font.pixelSize.small
 						color: Appearance.colors.colOnLayer1
 						elide: Text.ElideRight
 						opacity: text ? 1 : 0
