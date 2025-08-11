@@ -133,7 +133,7 @@ Scope {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 x: (mediaControlsRoot.screen.width / 2)  // Middle of screen
-                    - (osdWidth / 2)                     // Dodge OSD
+                    + (osdWidth)                     // (don't) Dodge OSD
                     - (widgetWidth)                      // Account for widget width
                     + (Appearance.sizes.elevationMargin) // It's fine for shadows to overlap
                 spacing: -Appearance.sizes.elevationMargin // Shadow overlap okay

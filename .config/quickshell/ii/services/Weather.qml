@@ -53,7 +53,7 @@ Singleton {
             temp.visib = (data?.current?.visibilityMiles || 0) + " m";
             temp.press = (data?.current?.pressureInches || 0) + " psi";
             temp.temp += (data?.current?.temp_F || 0);
-            temp.temp += " (" + (data?.current?.FeelsLikeF || 0) + ") ";
+            // temp.temp += " (" + (data?.current?.FeelsLikeF || 0) + ") ";
             temp.temp += "\u{02109}";
         } else {
             temp.wind = (data?.current?.windspeedKmph || 0) + " km/h";

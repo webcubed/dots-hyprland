@@ -1,8 +1,8 @@
+import QtQuick
+import QtQuick.Layouts
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
-import QtQuick
-import QtQuick.Layouts
 
 Item {
     id: root
@@ -23,14 +23,13 @@ Item {
             font.pixelSize: Appearance.font.pixelSize.large
             color: "#cad3f5"
             text: DateTime.timeWithSeconds
-            
         }
 
         StyledText {
             visible: root.showDate
             font.pixelSize: Appearance.font.pixelSize.small
             color: "#cad3f5"
-            text: "•"
+            text: " • "
         }
 
         StyledText {

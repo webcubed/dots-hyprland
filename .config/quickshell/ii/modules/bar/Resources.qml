@@ -3,7 +3,7 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
-
+import Quickshell.Services.UPower
 Item {
     id: root
     property bool borderless: Config.options.bar.borderless
@@ -14,7 +14,7 @@ Item {
     RowLayout {
         id: rowLayout
 
-        spacing: 0
+        spacing: 4
         anchors.fill: parent
         anchors.leftMargin: 4
         anchors.rightMargin: 4
@@ -40,11 +40,10 @@ Item {
             percentage: ResourceUsage.memoryUsedPercentage
 			Layout.leftMargin: 4
         }
-
-
-
-
-
+		BatteryIndicator {
+                    visible: (UPower.displayDevice.isLaptopBattery)
+                    Layout.alignment: Qt.AlignVCenter
+                }
     }
 
 }

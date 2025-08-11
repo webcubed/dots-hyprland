@@ -160,7 +160,7 @@ Singleton {
         property int unsharpen: 2
         property int unsharpenmore: 4
         property int verysmall: 4
-        property int small: 4
+        property int small: 8
         property int normal: 4
         property int large: 4
         property int verylarge: 4

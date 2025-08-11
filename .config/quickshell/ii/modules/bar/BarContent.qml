@@ -117,7 +117,7 @@ Item { // Bar content region
             RowLayout { // Content
                 id: leftSectionRowLayout
                 anchors.fill: parent
-                spacing: 10
+                spacing: 0
 
                 RippleButton {
                     // Left sidebar button
@@ -135,7 +135,7 @@ Item { // Bar content region
                     colBackgroundToggled: Appearance.colors.colSecondaryContainer
                     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
                     colRippleToggled: Appearance.colors.colSecondaryContainerActive
-                    toggled: GlobalStates.sidebarLeftOpen
+                    toggled: true
                     property color colText: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer0
 
                     onPressed: {
@@ -147,51 +147,28 @@ Item { // Bar content region
                         anchors.centerIn: parent
                         width: 19.5
                         height: 19.5
-                        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : "spark-symbolic"
+                        source: Config.options.bar.topLeftIcon == 'distro' ? SystemInfo.distroIcon : "arch-symbolic"
                         colorize: true
                         color: Appearance.colors.colOnLayer0
+						StyledText {
+						id: btw
+						text: "btw"
+						color: Appearance.colors.colOnLayer0
+						font.pixelSize: Appearance.font.pixelSize.smaller
+						// Right of the icon
+						anchors.left: distroIcon.right
+						anchors.leftMargin: 10
+						anchors.bottom: distroIcon.bottom
+					}
                     }
+					
                 }
-
-                ActiveWindow {
-                    visible: root.useShortenedForm === 0
-                    Layout.rightMargin: Appearance.rounding.screenRounding
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                }
-            }
-        }
-    }
-
-    RowLayout { // Middle section
-        id: middleSection
-        anchors.centerIn: parent
-        spacing: Config.options?.bar.borderless ? 4 : 8
-
         BarGroup {
-            id: leftCenterGroup
-            Layout.preferredWidth: root.centerSideModuleWidth
-            Layout.fillHeight: true
-
-            Resources {
-                alwaysShowAllResources: root.useShortenedForm === 2
-                Layout.fillWidth: root.useShortenedForm === 2
-            }
-
-            Media {
-                visible: root.useShortenedForm < 2
-                Layout.fillWidth: true
-            }
-        }
-
-        VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
-        }
-
-        BarGroup {
-            id: middleCenterGroup
+            id: workspacegroup
             padding: workspacesWidget.widgetPadding
             Layout.fillHeight: true
+			Layout.leftMargin: 8
+			
 
             Workspaces {
                 id: workspacesWidget
@@ -209,6 +186,52 @@ Item { // Bar content region
                 }
             }
         }
+                /*ActiveWindow {
+                    visible: root.useShortenedForm === 0
+                    Layout.rightMargin: Appearance.rounding.screenRounding
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                }*/
+            }
+        }
+    }
+
+
+
+    RowLayout { // Middle section
+        id: middleSection
+        anchors.centerIn: parent
+        spacing: Config.options?.bar.borderless ? 4 : 8
+
+        BarGroup {
+            id: leftCenterGroup
+            Layout.preferredWidth: Appearance.sizes.barCenterSideModuleWidthHellaShortened
+            Layout.fillHeight: true
+
+            Resources {
+                alwaysShowAllResources: root.useShortenedForm === 2
+                Layout.fillWidth: root.useShortenedForm === 2
+            }
+			    
+
+            
+        }
+		BarGroup {
+/* Media {
+                visible: root.useShortenedForm < 2
+                Layout.fillWidth: true
+            } */
+			Loader {
+            id: dynamicIslandLoader
+            anchors.centerIn: parent
+            sourceComponent: DynamicIsland {}
+        }}
+
+        VerticalBarSeparator {
+            visible: Config.options?.bar.borderless
+        }
+
+
 
         VerticalBarSeparator {
             visible: Config.options?.bar.borderless
@@ -218,9 +241,8 @@ Item { // Bar content region
             id: rightCenterGroup
             implicitWidth: rightCenterGroupContent.implicitWidth
             implicitHeight: rightCenterGroupContent.implicitHeight
-            Layout.preferredWidth: root.centerSideModuleWidth
+            // Layout.preferredWidth: root.centerSideModuleWidth
             Layout.fillHeight: true
-
             onPressed: {
                 GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
             }
@@ -228,7 +250,8 @@ Item { // Bar content region
             BarGroup {
                 id: rightCenterGroupContent
                 anchors.fill: parent
-
+				// Padding
+				padding: 10
                 ClockWidget {
                     showDate: (Config.options.bar.verbose && root.useShortenedForm < 2)
                     Layout.alignment: Qt.AlignVCenter
@@ -240,10 +263,7 @@ Item { // Bar content region
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                BatteryIndicator {
-                    visible: (root.useShortenedForm < 2 && UPower.displayDevice.isLaptopBattery)
-                    Layout.alignment: Qt.AlignVCenter
-                }
+
             }
         }
 
