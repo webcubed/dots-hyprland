@@ -28,13 +28,98 @@ Item {
 		}
 		return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 	}
-	anchors.centerIn: parent
-	width: 400
-	height: 48
-	property bool hovered: false
+
+	// State properties
 	property bool mediaActive: MprisController.activePlayer?.isPlaying || MprisController.activePlayer?.playbackState === MprisPlaybackState.Paused
 	property bool timerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning
 	property bool showActiveWindow: !mediaActive && !timerActive
+
+	// Dynamic width properties
+	property real baseWidth: 200
+	property real maxWidth: 600
+	property real minWidth: 150
+	property real contentWidth: calculateContentWidth()
+	property real targetWidth: Math.max(minWidth, Math.min(maxWidth, contentWidth))
+	
+	// Force recalculation when content changes
+	onMediaActiveChanged: {
+		contentWidth = calculateContentWidth()
+		console.log("Media active changed:", mediaActive, "new width:", contentWidth)
+	}
+	
+	onShowActiveWindowChanged: {
+		contentWidth = calculateContentWidth()
+		console.log("Show active window changed:", showActiveWindow, "new width:", contentWidth)
+	}
+	
+	// Watch for media title/artist changes
+	Connections {
+		target: MprisController.activePlayer
+		function onTitleChanged() {
+			if (mediaActive) {
+				contentWidth = calculateContentWidth()
+			}
+		}
+		function onArtistChanged() {
+			if (mediaActive) {
+				contentWidth = calculateContentWidth()
+			}
+		}
+	}
+	
+	// Watch for window title changes
+	Connections {
+		target: HyprlandController.activeWindow
+		function onTitleChanged() {
+			if (showActiveWindow) {
+				contentWidth = calculateContentWidth()
+			}
+		}
+	}
+
+	// Calculate required width based on content
+	function calculateContentWidth() {
+		if (mediaActive) {
+			// For media: use a more generous width for now
+			let titleText = MprisController.activePlayer?.title || ""
+			let artistText = MprisController.activePlayer?.artist || ""
+			let combinedText = titleText + " - " + artistText
+			let estimatedWidth = combinedText.length * 8 + 120 // rough character width estimation
+			console.log("Media active - estimated width:", estimatedWidth, "for text:", combinedText.substring(0, 50))
+			return Math.max(baseWidth, Math.min(maxWidth, estimatedWidth))
+		} else if (showActiveWindow) {
+			// For active window: use window title length
+			let windowText = HyprlandController.activeWindow?.title || ""
+			let estimatedWidth = windowText.length * 8 + 40
+			console.log("Window active - estimated width:", estimatedWidth, "for text:", windowText.substring(0, 50))
+			return Math.max(baseWidth, Math.min(maxWidth, estimatedWidth))
+		}
+		console.log("Using base width:", baseWidth)
+		return baseWidth
+	}
+
+	// Visualizer data properties - connected to global state
+	property list<real> visualizerPoints: GlobalStates.visualizerPoints || []
+	property real maxVisualizerValue: 1000
+	property int visualizerSmoothing: 2
+
+	// Debug visualizer data connection
+	onVisualizerPointsChanged: {
+		if (visualizerPoints && visualizerPoints.length > 0) {
+			console.log("DynamicIsland: visualizerPoints updated, length:", visualizerPoints.length)
+		}
+	}
+
+	// Layout properties
+	anchors.centerIn: parent
+	width: targetWidth
+	height: 48
+	property bool hovered: false
+
+	// Smooth width animation
+	Behavior on width {
+		NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+	}
 
 	MouseArea {
 		anchors.fill: parent
@@ -69,7 +154,8 @@ Item {
 					Layout.leftMargin: 8
 					
 					property bool titleHovered: false
-					property bool titleTruncated: false
+					property bool titleTruncated: mediaTitle.implicitWidth > titleScrollContainer.width
+					property bool shouldAnimateTitle: titleTruncated && titleHovered
 					
 					Behavior on Layout.maximumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
@@ -126,7 +212,7 @@ Item {
 							// Horizontal scrolling animation when hovered and still truncated
 							SequentialAnimation {
 								id: scrollAnimation
-								running: titleContainer.titleHovered && titleContainer.titleTruncated && mediaTitle.implicitWidth > titleScrollContainer.width
+								running: titleContainer.shouldAnimateTitle
 								loops: Animation.Infinite
 								
 								// Wait before starting scroll
@@ -382,5 +468,30 @@ Item {
                 }
             }
         }
+	}
+	
+	// Visualizer overlay - covers entire Dynamic Island when media is playing
+	WaveVisualizer {
+		id: visualizerOverlay
+		anchors.fill: parent
+		visible: dynamicIsland.mediaActive && MprisController.activePlayer?.isPlaying
+		live: MprisController.activePlayer?.isPlaying || false
+		points: dynamicIsland.visualizerPoints
+		maxVisualizerValue: dynamicIsland.maxVisualizerValue
+		smoothing: dynamicIsland.visualizerSmoothing
+		color: Appearance.colors.colPrimary
+		opacity: 0.4
+		z: 100 // Above other content
+		
+		Behavior on opacity { 
+			NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+		}
+		
+		// Debug output to monitor data flow
+		onPointsChanged: {
+			if (points && points.length > 0) {
+				console.log("Visualizer receiving data, length:", points.length, "first few:", points.slice(0, 5))
+			}
+		}
 	}
 }

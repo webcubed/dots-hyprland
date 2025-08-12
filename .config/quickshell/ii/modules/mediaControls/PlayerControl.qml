@@ -256,6 +256,18 @@ Item { // Player instance
                                 value: playerController.player?.position / playerController.player?.length
                                 sperm: playerController.player?.isPlaying
                             }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: function(mouse) {
+                                    if (playerController.player && playerController.player.length > 0) {
+                                        var clickPosition = mouse.x / width
+                                        var newPosition = clickPosition * playerController.player.length
+                                        playerController.player.position = newPosition
+                                    }
+                                }
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                         TrackChangeButton {
                             iconName: "skip_next"
