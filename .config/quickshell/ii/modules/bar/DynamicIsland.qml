@@ -61,28 +61,123 @@ Item {
 				spacing: 4
 				// Info container (title/artist or timer)
 				Item {
+					id: titleContainer
 					Layout.fillWidth: true
-					Layout.maximumWidth: 250
+					Layout.maximumWidth: titleHovered ? 400 : 250
 					Layout.fillHeight: true
 					Layout.alignment: Qt.AlignVCenter
 					Layout.leftMargin: 8
+					
+					property bool titleHovered: false
+					property bool titleTruncated: false
+					
+					Behavior on Layout.maximumWidth { 
+						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+					}
 
-					// Title/artist info
-					StyledText {
-						id: mediaTitle
+					MouseArea {
+						anchors.fill: parent
+						hoverEnabled: true
+						onEntered: {
+							if (titleContainer.titleTruncated) {
+								titleContainer.titleHovered = true
+							}
+						}
+						onExited: titleContainer.titleHovered = false
+						onClicked: {
+							// Propagate click to parent to open media controls
+							GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
+						}
+					}
+
+					// Title/artist info with scrolling container
+					Item {
+						id: titleScrollContainer
 						anchors.verticalCenter: parent.verticalCenter
 						width: parent.width
-						text: !dynamicIsland.timerActive ? 
-							  // Full title and artist when no timer
-							  `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}` :
-
-							  ""
-						font.pixelSize: Appearance.font.pixelSize.small
-						color: Appearance.colors.colOnLayer1
-						elide: Text.ElideRight
-						opacity: text ? 1 : 0
-						visible: opacity > 0
-						Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
+						height: parent.height
+						clip: true
+						
+						StyledText {
+							id: mediaTitle
+							anchors.verticalCenter: parent.verticalCenter
+							width: titleContainer.titleHovered ? implicitWidth : Math.min(implicitWidth, titleScrollContainer.width)
+							text: !dynamicIsland.timerActive ? 
+								  // Full title and artist when no timer
+								  `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}` :
+								  ""
+							font.pixelSize: Appearance.font.pixelSize.small
+							color: Appearance.colors.colOnLayer1
+							opacity: text ? 1 : 0
+							visible: opacity > 0
+							elide: titleContainer.titleHovered ? Text.ElideNone : Text.ElideRight
+							
+							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
+							Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+							
+							// Check if text is truncated
+							onTextChanged: {
+								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
+							}
+							onImplicitWidthChanged: {
+								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
+							}
+							
+							// Horizontal scrolling animation when hovered and still truncated
+							SequentialAnimation {
+								id: scrollAnimation
+								running: titleContainer.titleHovered && titleContainer.titleTruncated && mediaTitle.implicitWidth > titleScrollContainer.width
+								loops: Animation.Infinite
+								
+								// Wait before starting scroll
+								PauseAnimation { duration: 1000 }
+								
+								// Scroll to show the end
+								NumberAnimation {
+									target: mediaTitle
+									property: "x"
+									to: titleScrollContainer.width - mediaTitle.implicitWidth - 20
+									duration: Math.max(2000, (mediaTitle.implicitWidth - titleScrollContainer.width) * 15)
+									easing.type: Easing.InOutQuad
+								}
+								
+								// Wait at the end
+								PauseAnimation { duration: 1000 }
+								
+								// Scroll back to beginning
+								NumberAnimation {
+									target: mediaTitle
+									property: "x"
+									to: 0
+									duration: Math.max(2000, (mediaTitle.implicitWidth - titleScrollContainer.width) * 15)
+									easing.type: Easing.InOutQuad
+								}
+								
+								// Stop animation and reset when hover ends
+								onRunningChanged: {
+									if (!running) {
+										mediaTitle.x = 0
+									}
+								}
+							}
+							
+							// Reset position when not hovering with smooth animation
+							Behavior on x {
+								enabled: !scrollAnimation.running && !titleContainer.titleHovered
+								NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+							}
+							
+							// Watch for hover state changes to reset position
+							Connections {
+								target: titleContainer
+								function onTitleHoveredChanged() {
+									if (!titleContainer.titleHovered) {
+										scrollAnimation.stop()
+										mediaTitle.x = 0
+									}
+								}
+							}
+						}
 					}
 
 					// Timer info
@@ -152,10 +247,21 @@ Item {
 				// Progress bar
 				Item {
 					Layout.fillWidth: true
-					Layout.minimumWidth: (TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 75 : 50
-                    Layout.preferredWidth: (TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 125 : 100
-                    Layout.maximumWidth: (TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 200 : 150
+					Layout.minimumWidth: titleContainer.titleHovered ? 25 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 75 : 50)
+                    Layout.preferredWidth: titleContainer.titleHovered ? 50 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 125 : 100)
+                    Layout.maximumWidth: titleContainer.titleHovered ? 75 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 200 : 150)
 					Layout.preferredHeight: 10
+					Layout.leftMargin: 6
+					
+					Behavior on Layout.minimumWidth { 
+						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+					}
+					Behavior on Layout.preferredWidth { 
+						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+					}
+					Behavior on Layout.maximumWidth { 
+						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+					}
 					StyledProgressBar {
 						id: dynamicIslandProgressBar
 						anchors.fill: parent
@@ -192,9 +298,15 @@ Item {
 					Layout.preferredHeight: 18
 					padding: 0
 					onPressed: MprisController.activePlayer.togglePlaying()
+					buttonRadius: MprisController.activePlayer?.isPlaying ? Appearance.rounding.normal : 9
 					colBackground: Appearance.colors.colPrimary
 					colBackgroundHover: Appearance.colors.colPrimaryHover
 					colRipple: Appearance.colors.colPrimaryActive
+					
+					Behavior on buttonRadius { 
+						NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } 
+					}
+					
 					contentItem: MaterialSymbol {
 						anchors.centerIn: parent
 						iconSize: 13
