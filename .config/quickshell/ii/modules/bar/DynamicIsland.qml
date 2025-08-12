@@ -35,9 +35,9 @@ Item {
 	property bool showActiveWindow: !mediaActive && !timerActive
 
 	// Dynamic width properties
-	property real baseWidth: 250  // Reduced from 400 to make it narrower
-	property real maxWidth: 500   // Reduced from 800 to prevent it being too wide
-	property real minWidth: 200   // Reduced from 300
+	property real baseWidth: 280  // Slightly wider to accommodate controls
+	property real maxWidth: 500   // Upper cap
+	property real minWidth: 260   // Ensure controls never overflow
 	property real targetWidth: baseWidth
 	
 	// Force recalculation when content changes
@@ -93,26 +93,52 @@ Item {
 		}
 	}
 
+	// Watch for active window switches
+	Connections {
+		target: ToplevelManager
+		function onActiveToplevelChanged() {
+			console.log("ACTIVE TOPLEVEL CHANGED")
+			if (showActiveWindow) {
+				updateWidth()
+			}
+		}
+	}
+
 	// Calculate required width based on content
 	function calculateContentWidth() {
 		console.log("=== CALCULATING WIDTH ===")
 		console.log("mediaActive:", mediaActive, "showActiveWindow:", showActiveWindow)
-		
+
+		// Base paddings/margins and spacings used in the layout
+		const outerPadding = 16 // left+right combined approximation
+		const rowSpacing = 4    // spacing inside RowLayout
+		const controlButtons = 18 * 3 + rowSpacing * 2 // three 18px buttons with gaps
+		const progressPreferred = titleContainer?.titleHovered ? 80 : 120
+
 		if (mediaActive) {
-			// For media: use correct property names and more generous width calculation
-			let titleText = MprisController.activePlayer?.trackTitle || ""
-			let artistText = MprisController.activePlayer?.trackArtist || ""
-			let combinedText = titleText + (artistText ? " - " + artistText : "")
-			let estimatedWidth = combinedText.length * 10 + 200 // More generous for media
-			console.log("Media active - title:", titleText, "artist:", artistText)
-			console.log("Media active - estimated width:", estimatedWidth, "for text:", combinedText.substring(0, 50))
-			return Math.max(minWidth, Math.min(maxWidth, estimatedWidth))
+			// Measure the media title's actual implicit width if available
+			let titleWidth = mediaTitle?.implicitWidth || 0
+			// Fallback if not yet resolved
+			if (titleWidth <= 0) {
+				let titleText = MprisController.activePlayer?.trackTitle || ""
+				let artistText = MprisController.activePlayer?.trackArtist || ""
+				let combinedText = titleText + (artistText ? " - " + artistText : "")
+				titleWidth = combinedText.length * 7.5 // more conservative per-char estimate
+			}
+
+			let desired = outerPadding + titleWidth + rowSpacing + progressPreferred + rowSpacing + controlButtons
+			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
+			console.log("Media desired width:", desired, "clamped:", clamped, "title implicit:", titleWidth)
+			return clamped
 		} else if (showActiveWindow) {
-			// For active window: use window title length with generous spacing
-			let windowText = root.activeWindow?.title || ""
-			let estimatedWidth = windowText.length * 8 + 150 // More generous for window titles
-			console.log("Window active - estimated width:", estimatedWidth, "for text:", windowText.substring(0, 50))
-			return Math.max(minWidth, Math.min(maxWidth, estimatedWidth))
+			// Prefer actual rendered title width if available
+			let measured = activeWindowTitle?.implicitWidth || 0
+			let fallbackText = root.activeWindow?.title || ""
+			let windowWidth = Math.max(60, measured > 0 ? measured : fallbackText.length * 7.5)
+			let desired = outerPadding + windowWidth
+			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
+			console.log("Window desired width:", desired, "clamped:", clamped)
+			return clamped
 		}
 		console.log("Using base width:", baseWidth)
 		return baseWidth
@@ -131,15 +157,21 @@ Item {
 	}
 
 	// Layout properties
-	anchors.centerIn: parent
-	width: targetWidth  // Use targetWidth instead of baseWidth for dynamic resizing
+	// Let parent layouts position/size us; also set explicit width to drive animations reliably
+	implicitWidth: targetWidth
+	Layout.preferredWidth: targetWidth
+	Layout.minimumWidth: minWidth
+	Layout.maximumWidth: maxWidth
+	width: targetWidth
 	height: 32
+	clip: true // keep children inside the island bounds
 	property bool hovered: false
 
-	// Smooth width animation
-	Behavior on width {
-		NumberAnimation { duration: 400; easing.type: Easing.InOutQuad }
-	}
+	// Smooth width animation (works for both explicit width and layouts)
+	Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+	Behavior on Layout.preferredWidth { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+	// Also animate the driving property itself so bindings propagate smoothly
+	Behavior on targetWidth { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
 
 	// Background with visualizer overlay - must be first to render behind content
 	Rectangle {
@@ -211,8 +243,9 @@ Item {
 		// Media section
 		Item {
 			visible: dynamicIsland.mediaActive
-			width: parent.width
-			height: parent.height
+			// Let RowLayout manage sizing
+			Layout.fillWidth: true
+			Layout.fillHeight: true
 			RowLayout {
 				anchors.fill: parent
 				spacing: 4
@@ -228,6 +261,10 @@ Item {
 					property bool titleHovered: false
 					property bool titleTruncated: mediaTitle.implicitWidth > titleScrollContainer.width
 					property bool shouldAnimateTitle: titleTruncated && titleHovered
+					
+					// Recalculate island width when hover/truncation state changes
+					onTitleHoveredChanged: if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+					onTitleTruncatedChanged: if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
 					
 					Behavior on Layout.maximumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
@@ -276,9 +313,11 @@ Item {
 							// Check if text is truncated
 							onTextChanged: {
 								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
+								if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
 							}
 							onImplicitWidthChanged: {
 								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
+								if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
 							}
 							
 							// Horizontal scrolling animation when hovered and still truncated
@@ -511,6 +550,19 @@ Item {
 			visible: dynamicIsland.showActiveWindow
 			width: parent.width
 			height: parent.height
+			onVisibleChanged: if (visible) dynamicIsland.updateWidth()
+
+
+			// When derived window state changes, recalc width
+			onFocusingThisMonitorChanged: if (dynamicIsland.showActiveWindow) dynamicIsland.updateWidth()
+			onBiggestWindowChanged: if (dynamicIsland.showActiveWindow) dynamicIsland.updateWidth()
+
+			Connections {
+				target: root.activeWindow
+				function onActivatedChanged() {
+					if (dynamicIsland.showActiveWindow) dynamicIsland.updateWidth()
+				}
+			}
 			
 			StyledText {
 				id: activeWindowTitle
@@ -522,19 +574,29 @@ Item {
 				color: Appearance.colors.colOnLayer1
 				elide: Text.ElideRight
 				horizontalAlignment: Text.AlignHCenter
-				width: Math.min(implicitWidth, parent.width - 16)
+				verticalAlignment: Text.AlignVCenter
 				clip: true
-				onTextChanged: {
-					if (activeWindowTitle.width > parent.width - 16) {
-						while (activeWindowTitle.width > parent.width - 16 && activeWindowTitle.font.pixelSize > 6) {
-							activeWindowTitle.font.pixelSize -= 1;
+				width: parent.width - 16
+				function fitToAvailable() {
+					// One-shot font fit: reset to baseline, then shrink if needed to fit available width.
+					Qt.callLater(function() {
+						var baseline = Appearance.font.pixelSize.small
+						var minSize = 8
+						// reset to baseline to measure true width
+						activeWindowTitle.font.pixelSize = baseline
+						var available = activeWindowTitle.width
+						var iw = activeWindowTitle.implicitWidth
+						if (iw > 0 && available > 0 && iw > available) {
+							var scale = available / iw
+							var newSize = Math.max(minSize, Math.floor(baseline * scale))
+							activeWindowTitle.font.pixelSize = newSize
+						} else {
+							activeWindowTitle.font.pixelSize = baseline
 						}
-					} else {
-						while (activeWindowTitle.width < parent.width - 16 && activeWindowTitle.font.pixelSize < Appearance.font.pixelSize.small) {
-							activeWindowTitle.font.pixelSize += 1;
-						}
-					}
+					})
 				}
+				onWidthChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
+				onTextChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
 			}
 		}
 	}
