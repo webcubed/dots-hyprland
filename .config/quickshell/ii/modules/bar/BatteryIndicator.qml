@@ -28,12 +28,12 @@ MouseArea {
             id: batteryProgress
             value: percentage
             highlightColor: (isLow && !isCharging) ? Appearance.m3colors.m3error : Appearance.colors.colOnSecondaryContainer
+				Layout.leftMargin: 10
 
             Item {
                 anchors.centerIn: parent
                 width: batteryProgress.valueBarWidth
                 height: batteryProgress.valueBarHeight
-
                 RowLayout {
                     anchors.centerIn: parent
                     spacing: 0

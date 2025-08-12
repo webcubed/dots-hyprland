@@ -126,16 +126,26 @@ Item {
 				titleWidth = combinedText.length * 7.5 // more conservative per-char estimate
 			}
 
-			let desired = outerPadding + titleWidth + rowSpacing + progressPreferred + rowSpacing + controlButtons
+			// Compute desired widths for normal (non-hover) and hover states explicitly
+			const normalProgress = 120
+			const hoverProgress = 80
+			let desiredNormal = outerPadding + titleWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
+			let desiredHover = outerPadding + titleWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons
+
+			const hoveringTruncated = !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
+			// Prevent shrinking while hovering a truncated title; allow growth if needed
+			let desired = hoveringTruncated ? Math.max(desiredNormal, desiredHover, targetWidth) : (titleContainer?.titleHovered ? desiredHover : desiredNormal)
 			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
-			console.log("Media desired width:", desired, "clamped:", clamped, "title implicit:", titleWidth)
+			console.log("Media desired width:", desired, "clamped:", clamped, "title implicit:", titleWidth, "hoveringTruncated:", hoveringTruncated)
 			return clamped
 		} else if (showActiveWindow) {
-			// Prefer actual rendered title width if available
-			let measured = activeWindowTitle?.implicitWidth || 0
+			// Prefer baseline-measured title width (hidden measurer), then fallback to implicitWidth
+			let measured = (activeWindowTitleMeasure?.contentWidth || 0)
+			if (measured <= 0) measured = activeWindowTitle?.implicitWidth || 0
 			let fallbackText = root.activeWindow?.title || ""
 			let windowWidth = Math.max(60, measured > 0 ? measured : fallbackText.length * 7.5)
-			let desired = outerPadding + windowWidth
+			// Active window needs less outer padding than media (controls/progress absent)
+			let desired = windowWidth + 12
 			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
 			console.log("Window desired width:", desired, "clamped:", clamped)
 			return clamped
@@ -548,8 +558,11 @@ Item {
 			property bool focusingThisMonitor: HyprlandData.activeWorkspace?.monitor == monitor?.name
 			property var biggestWindow: HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace.id)
 			visible: dynamicIsland.showActiveWindow
-			width: parent.width
+			// Match the Dynamic Island's current width and center within the local parent
+			width: dynamicIsland.width
 			height: parent.height
+			x: Math.round((parent.width - width) / 2)
+			clip: true
 			onVisibleChanged: if (visible) dynamicIsland.updateWidth()
 
 
@@ -564,40 +577,71 @@ Item {
 				}
 			}
 			
-			StyledText {
-				id: activeWindowTitle
-				anchors.centerIn: parent
-				text: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
-					root.activeWindow?.title :
-					(root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${root.monitor?.activeWorkspace?.id ?? 1}`
-				font.pixelSize: Appearance.font.pixelSize.small
-				color: Appearance.colors.colOnLayer1
-				elide: Text.ElideRight
-				horizontalAlignment: Text.AlignHCenter
-				verticalAlignment: Text.AlignVCenter
-				clip: true
-				width: parent.width - 16
-				function fitToAvailable() {
-					// One-shot font fit: reset to baseline, then shrink if needed to fit available width.
-					Qt.callLater(function() {
-						var baseline = Appearance.font.pixelSize.small
-						var minSize = 8
-						// reset to baseline to measure true width
-						activeWindowTitle.font.pixelSize = baseline
-						var available = activeWindowTitle.width
-						var iw = activeWindowTitle.implicitWidth
-						if (iw > 0 && available > 0 && iw > available) {
-							var scale = available / iw
-							var newSize = Math.max(minSize, Math.floor(baseline * scale))
-							activeWindowTitle.font.pixelSize = newSize
-						} else {
-							activeWindowTitle.font.pixelSize = baseline
+			Item {
+				id: activeWindowTitleBox
+				// Fill the active window section exactly (the section itself matches/centers to island)
+				width: parent.width
+				height: parent.height
+				x: 0
+				y: 0
+
+				// Inner content box: width tracks text, centered within the section
+				Item {
+					id: titleContentBox
+					readonly property int sideMargin: 8
+					// Width is the measured baseline content width of the text, clamped to the active window section's width
+					width: Math.min(parent.width - sideMargin * 2, Math.max(0, activeWindowTitleMeasure.contentWidth))
+					height: parent.height
+					anchors.centerIn: parent
+
+					onWidthChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
+					// Hidden measurer for stable baseline width (avoid feedback from fitted text)
+					StyledText {
+						id: activeWindowTitleMeasure
+						visible: false
+						text: activeWindowTitle.text
+						font.pixelSize: Appearance.font.pixelSize.small
+						// Ensure full baseline width is measured (no wrapping/elide)
+						elide: Text.ElideNone
+						horizontalAlignment: Text.AlignLeft
+						clip: false
+					}
+					StyledText {
+						id: activeWindowTitle
+						anchors.fill: parent
+						text: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
+							root.activeWindow?.title :
+							(root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${root.monitor?.activeWorkspace?.id ?? 1}`
+						font.pixelSize: Appearance.font.pixelSize.small
+						color: Appearance.colors.colOnLayer1
+						elide: Text.ElideRight
+						horizontalAlignment: Text.AlignHCenter
+						verticalAlignment: Text.AlignVCenter
+						clip: true
+						function fitToAvailable() {
+							// One-shot font fit: reset to baseline, then shrink if needed to fit available width.
+							Qt.callLater(function() {
+								var baseline = Appearance.font.pixelSize.small
+								var minSize = 8
+								// reset to baseline to measure true width
+								activeWindowTitle.font.pixelSize = baseline
+								var available = titleContentBox.width
+								var iw = activeWindowTitle.implicitWidth
+								if (iw > 0 && available > 0 && iw > available) {
+									var scale = available / iw
+									var newSize = Math.max(minSize, Math.floor(baseline * scale))
+									activeWindowTitle.font.pixelSize = newSize
+								} else {
+									activeWindowTitle.font.pixelSize = baseline
+								}
+							})
 						}
-					})
+						onTextChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
+					}
 				}
-				onWidthChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
-				onTextChanged: if (dynamicIsland.showActiveWindow) activeWindowTitle.fitToAvailable()
 			}
+
+
 		}
 	}
 }

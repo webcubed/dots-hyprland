@@ -438,6 +438,7 @@ Item { // Bar content region
                             iconSize: Appearance.font.pixelSize.larger
                             color: rightSidebarButton.colText
                         }
+						BatteryIndicator{}
                     }
                 }
 
