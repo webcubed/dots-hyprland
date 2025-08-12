@@ -35,64 +35,84 @@ Item {
 	property bool showActiveWindow: !mediaActive && !timerActive
 
 	// Dynamic width properties
-	property real baseWidth: 200
-	property real maxWidth: 600
-	property real minWidth: 150
-	property real contentWidth: calculateContentWidth()
-	property real targetWidth: Math.max(minWidth, Math.min(maxWidth, contentWidth))
+	property real baseWidth: 250  // Reduced from 400 to make it narrower
+	property real maxWidth: 500   // Reduced from 800 to prevent it being too wide
+	property real minWidth: 200   // Reduced from 300
+	property real targetWidth: baseWidth
 	
 	// Force recalculation when content changes
 	onMediaActiveChanged: {
-		contentWidth = calculateContentWidth()
-		console.log("Media active changed:", mediaActive, "new width:", contentWidth)
+		console.log("Media active changed:", mediaActive)
+		updateWidth()
 	}
 	
 	onShowActiveWindowChanged: {
-		contentWidth = calculateContentWidth()
-		console.log("Show active window changed:", showActiveWindow, "new width:", contentWidth)
+		console.log("Show active window changed:", showActiveWindow)
+		updateWidth()
+	}
+	
+	// Function to update width using targetWidth property
+	function updateWidth() {
+		var newWidth = calculateContentWidth()
+		console.log("DYNAMIC ISLAND: Updating width from", targetWidth, "to:", newWidth)
+		console.log("DYNAMIC ISLAND: Media active:", mediaActive, "Show active window:", showActiveWindow)
+		targetWidth = newWidth
+	}
+	
+	// Initialize width on component creation
+	Component.onCompleted: {
+		console.log("DYNAMIC ISLAND: Component completed, initializing width")
+		updateWidth()
 	}
 	
 	// Watch for media title/artist changes
 	Connections {
 		target: MprisController.activePlayer
-		function onTitleChanged() {
+		function onTrackTitleChanged() {
+			console.log("MPRIS TITLE CHANGED:", MprisController.activePlayer?.trackTitle)
 			if (mediaActive) {
-				contentWidth = calculateContentWidth()
+				updateWidth()
 			}
 		}
-		function onArtistChanged() {
+		function onTrackArtistChanged() {
+			console.log("MPRIS ARTIST CHANGED:", MprisController.activePlayer?.trackArtist)
 			if (mediaActive) {
-				contentWidth = calculateContentWidth()
+				updateWidth()
 			}
 		}
 	}
 	
 	// Watch for window title changes
 	Connections {
-		target: HyprlandController.activeWindow
+		target: root.activeWindow
 		function onTitleChanged() {
+			console.log("WINDOW TITLE CHANGED:", root.activeWindow?.title)
 			if (showActiveWindow) {
-				contentWidth = calculateContentWidth()
+				updateWidth()
 			}
 		}
 	}
 
 	// Calculate required width based on content
 	function calculateContentWidth() {
+		console.log("=== CALCULATING WIDTH ===")
+		console.log("mediaActive:", mediaActive, "showActiveWindow:", showActiveWindow)
+		
 		if (mediaActive) {
-			// For media: use a more generous width for now
-			let titleText = MprisController.activePlayer?.title || ""
-			let artistText = MprisController.activePlayer?.artist || ""
-			let combinedText = titleText + " - " + artistText
-			let estimatedWidth = combinedText.length * 8 + 120 // rough character width estimation
+			// For media: use correct property names and more generous width calculation
+			let titleText = MprisController.activePlayer?.trackTitle || ""
+			let artistText = MprisController.activePlayer?.trackArtist || ""
+			let combinedText = titleText + (artistText ? " - " + artistText : "")
+			let estimatedWidth = combinedText.length * 10 + 200 // More generous for media
+			console.log("Media active - title:", titleText, "artist:", artistText)
 			console.log("Media active - estimated width:", estimatedWidth, "for text:", combinedText.substring(0, 50))
-			return Math.max(baseWidth, Math.min(maxWidth, estimatedWidth))
+			return Math.max(minWidth, Math.min(maxWidth, estimatedWidth))
 		} else if (showActiveWindow) {
-			// For active window: use window title length
-			let windowText = HyprlandController.activeWindow?.title || ""
-			let estimatedWidth = windowText.length * 8 + 40
+			// For active window: use window title length with generous spacing
+			let windowText = root.activeWindow?.title || ""
+			let estimatedWidth = windowText.length * 8 + 150 // More generous for window titles
 			console.log("Window active - estimated width:", estimatedWidth, "for text:", windowText.substring(0, 50))
-			return Math.max(baseWidth, Math.min(maxWidth, estimatedWidth))
+			return Math.max(minWidth, Math.min(maxWidth, estimatedWidth))
 		}
 		console.log("Using base width:", baseWidth)
 		return baseWidth
@@ -112,13 +132,65 @@ Item {
 
 	// Layout properties
 	anchors.centerIn: parent
-	width: targetWidth
-	height: 48
+	width: targetWidth  // Use targetWidth instead of baseWidth for dynamic resizing
+	height: 32
 	property bool hovered: false
 
 	// Smooth width animation
 	Behavior on width {
-		NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+		NumberAnimation { duration: 400; easing.type: Easing.InOutQuad }
+	}
+
+	// Background with visualizer overlay - must be first to render behind content
+	Rectangle {
+		id: dynamicIslandBackground
+		anchors.fill: parent
+		color: "transparent" // Match the bar's transparent background approach
+		radius: Appearance.rounding.full
+		
+		// Visualizer bars - extend entire width, align to bottom
+		Row {
+			anchors.left: parent.left
+			anchors.right: parent.right
+			anchors.bottom: parent.bottom
+			anchors.leftMargin: 4
+			anchors.rightMargin: 4
+			spacing: Math.max(1, (parent.width - 8) / 50) // Dynamic spacing to fill width
+			opacity: MprisController.activePlayer?.isPlaying ? 0.15 : 0
+			visible: opacity > 0
+			
+			Behavior on opacity { 
+				NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+			}
+			
+			Repeater {
+				model: 30 // Fewer bars but wider for better visibility
+				Rectangle {
+					width: Math.max(2, (parent.width - parent.spacing * 29) / 30) // Wider bars
+					height: Math.max(2, Math.min(12, (dynamicIsland.visualizerPoints[index] || Math.random() * 100) * 0.12))
+					color: Appearance.colors.colPrimary
+					radius: 1
+					opacity: 0.4
+					
+					// Align bars to bottom (they grow upward from bottom)
+					anchors.bottom: parent.bottom
+					
+					Behavior on height { 
+						NumberAnimation { duration: 120; easing.type: Easing.OutQuad } 
+					}
+					
+					// Add some random animation for testing
+					Timer {
+						interval: 80 + (index * 15)
+						running: MprisController.activePlayer?.isPlaying
+						repeat: true
+						onTriggered: {
+							parent.height = Math.max(2, Math.min(12, Math.random() * 12))
+						}
+					}
+				}
+			}
+		}
 	}
 
 	MouseArea {
@@ -148,7 +220,7 @@ Item {
 				Item {
 					id: titleContainer
 					Layout.fillWidth: true
-					Layout.maximumWidth: titleHovered ? 400 : 250
+					Layout.maximumWidth: titleHovered ? (dynamicIsland.width - 120) : (dynamicIsland.width - 160) // Dynamic based on island width, leaving space for controls
 					Layout.fillHeight: true
 					Layout.alignment: Qt.AlignVCenter
 					Layout.leftMargin: 8
@@ -333,11 +405,12 @@ Item {
 				// Progress bar
 				Item {
 					Layout.fillWidth: true
-					Layout.minimumWidth: titleContainer.titleHovered ? 25 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 75 : 50)
-                    Layout.preferredWidth: titleContainer.titleHovered ? 50 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 125 : 100)
-                    Layout.maximumWidth: titleContainer.titleHovered ? 75 : ((TimerService.pomodoroRunning && !TimerService.stopwatchRunning) || (TimerService.stopwatchRunning && !TimerService.pomodoroRunning) ? 200 : 150)
-					Layout.preferredHeight: 10
-					Layout.leftMargin: 6
+					Layout.minimumWidth: titleContainer.titleHovered ? 60 : 80
+                    Layout.preferredWidth: titleContainer.titleHovered ? 80 : 120
+                    Layout.maximumWidth: titleContainer.titleHovered ? 100 : 160
+					Layout.preferredHeight: 8
+					Layout.leftMargin: 4
+					Layout.rightMargin: 4
 					
 					Behavior on Layout.minimumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
@@ -430,67 +503,38 @@ Item {
 		Item {
 			id: root
 			readonly property HyprlandMonitor monitor: Hyprland.monitorFor(root.QsWindow.window?.screen)
-    readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
+			readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
-    property string activeWindowAddress: `0x${activeWindow?.HyprlandToplevel?.address}`
-    property bool focusingThisMonitor: HyprlandData.activeWorkspace?.monitor == monitor?.name
-    property var biggestWindow: HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace.id)
-            visible: dynamicIsland.showActiveWindow
-            width: parent.width
-            height: Appearance.sizes.barHeight
-            anchors.horizontalCenter: parent.horizontalCenter
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 8
-                spacing: 2
-                StyledText {
-                    id: activeWindowTitle
-                    text: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
-                root.activeWindow?.title :
-                (root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${root.monitor?.activeWorkspace?.id ?? 1}`
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    color: "#cad3f5"
-                    elide: Text.ElideRight
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    horizontalAlignment: Text.AlignHCenter
-                    clip: true
-                    onTextChanged: {
-                        if (activeWindowTitle.width > parent.width) {
-                            while (activeWindowTitle.width > parent.width && activeWindowTitle.font.pixelSize > 6) {
-                                activeWindowTitle.font.pixelSize -= 1;
-                            }
-                        } else {
-                            while (activeWindowTitle.width < parent.width && activeWindowTitle.font.pixelSize < Appearance.font.pixelSize.small) {
-                                activeWindowTitle.font.pixelSize += 1;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-	}
-	
-	// Visualizer overlay - covers entire Dynamic Island when media is playing
-	WaveVisualizer {
-		id: visualizerOverlay
-		anchors.fill: parent
-		visible: dynamicIsland.mediaActive && MprisController.activePlayer?.isPlaying
-		live: MprisController.activePlayer?.isPlaying || false
-		points: dynamicIsland.visualizerPoints
-		maxVisualizerValue: dynamicIsland.maxVisualizerValue
-		smoothing: dynamicIsland.visualizerSmoothing
-		color: Appearance.colors.colPrimary
-		opacity: 0.4
-		z: 100 // Above other content
-		
-		Behavior on opacity { 
-			NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
-		}
-		
-		// Debug output to monitor data flow
-		onPointsChanged: {
-			if (points && points.length > 0) {
-				console.log("Visualizer receiving data, length:", points.length, "first few:", points.slice(0, 5))
+			property string activeWindowAddress: `0x${activeWindow?.HyprlandToplevel?.address}`
+			property bool focusingThisMonitor: HyprlandData.activeWorkspace?.monitor == monitor?.name
+			property var biggestWindow: HyprlandData.biggestWindowForWorkspace(HyprlandData.monitors[root.monitor?.id]?.activeWorkspace.id)
+			visible: dynamicIsland.showActiveWindow
+			width: parent.width
+			height: parent.height
+			
+			StyledText {
+				id: activeWindowTitle
+				anchors.centerIn: parent
+				text: root.focusingThisMonitor && root.activeWindow?.activated && root.biggestWindow ? 
+					root.activeWindow?.title :
+					(root.biggestWindow?.title) ?? `${Translation.tr("Workspace")} ${root.monitor?.activeWorkspace?.id ?? 1}`
+				font.pixelSize: Appearance.font.pixelSize.small
+				color: Appearance.colors.colOnLayer1
+				elide: Text.ElideRight
+				horizontalAlignment: Text.AlignHCenter
+				width: Math.min(implicitWidth, parent.width - 16)
+				clip: true
+				onTextChanged: {
+					if (activeWindowTitle.width > parent.width - 16) {
+						while (activeWindowTitle.width > parent.width - 16 && activeWindowTitle.font.pixelSize > 6) {
+							activeWindowTitle.font.pixelSize -= 1;
+						}
+					} else {
+						while (activeWindowTitle.width < parent.width - 16 && activeWindowTitle.font.pixelSize < Appearance.font.pixelSize.small) {
+							activeWindowTitle.font.pixelSize += 1;
+						}
+					}
+				}
 			}
 		}
 	}
