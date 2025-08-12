@@ -36,10 +36,23 @@ Item {
 
 	// Dynamic width properties
 	property real baseWidth: 280  // Slightly wider to accommodate controls
-	property real maxWidth: 500   // Upper cap
+	property real maxWidth: 560   // Allow a bit more room for short-but-complete titles
 	property real minWidth: 260   // Ensure controls never overflow
 	property real targetWidth: baseWidth
-	
+	// Set true when current media title qualifies as "short" by character count
+	property bool shortTitleActive: false
+
+	// Shared layout metrics (keep in sync with RowLayout content)
+	// Used both by calculateContentWidth() and UI sizing to avoid drift
+	readonly property int outerPadding: 16                    // combined left+right
+	readonly property int rowSpacing: 4                       // spacing inside RowLayout
+	readonly property int controlButtons: 18 * 3 + rowSpacing * 2 // three 18px buttons with gaps
+	readonly property int progressNormal: 120
+	readonly property int progressHover: 80
+	// Titles at or below this pixel width should display fully without overflow
+	readonly property int shortTitlePxThreshold: 240
+
+
 	// Force recalculation when content changes
 	onMediaActiveChanged: {
 		console.log("Media active changed:", mediaActive)
@@ -109,37 +122,44 @@ Item {
 		console.log("=== CALCULATING WIDTH ===")
 		console.log("mediaActive:", mediaActive, "showActiveWindow:", showActiveWindow)
 
-		// Base paddings/margins and spacings used in the layout
-		const outerPadding = 16 // left+right combined approximation
-		const rowSpacing = 4    // spacing inside RowLayout
-		const controlButtons = 18 * 3 + rowSpacing * 2 // three 18px buttons with gaps
-		const progressPreferred = titleContainer?.titleHovered ? 80 : 120
+		// Use shared metrics so calc matches layout exactly
+		const outerPadding = dynamicIsland.outerPadding
+		const rowSpacing = dynamicIsland.rowSpacing
+		const controlButtons = dynamicIsland.controlButtons
+		const progressPreferred = titleContainer?.titleHovered ? dynamicIsland.progressHover : dynamicIsland.progressNormal
 
 		if (mediaActive) {
 			// Measure the media title's actual implicit width if available
-			let titleWidth = mediaTitle?.implicitWidth || 0
+			// let titleWidth = mediaTitle?.implicitWidth || 0
 			// Fallback if not yet resolved
-			if (titleWidth <= 0) {
-				let titleText = MprisController.activePlayer?.trackTitle || ""
-				let artistText = MprisController.activePlayer?.trackArtist || ""
-				let combinedText = titleText + (artistText ? " - " + artistText : "")
-				titleWidth = combinedText.length * 7.5 // more conservative per-char estimate
-			}
+			// Prioritize baseline-measured title width (hidden measurer)
+			let titleWidth = mediaTitleMeasure?.contentWidth || 0
 
 			// Compute desired widths for normal (non-hover) and hover states explicitly
-			const normalProgress = 120
-			const hoverProgress = 80
-			let desiredNormal = outerPadding + titleWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
-			let desiredHover = outerPadding + titleWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons
+			const normalProgress = dynamicIsland.progressNormal
+			const hoverProgress = dynamicIsland.progressHover
+			const widthBuffer = 12 // Add tolerance to prevent clipping
+			let titleDesiredWidth = titleWidth + widthBuffer
+			let desiredNormal = outerPadding + titleDesiredWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
+			let desiredHover = outerPadding + titleWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons + widthBuffer
 
 			const hoveringTruncated = !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
-			// Prevent shrinking while hovering a truncated title; allow growth if needed
-			let desired = hoveringTruncated ? Math.max(desiredNormal, desiredHover, targetWidth) : (titleContainer?.titleHovered ? desiredHover : desiredNormal)
-			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
-			console.log("Media desired width:", desired, "clamped:", clamped, "title implicit:", titleWidth, "hoveringTruncated:", hoveringTruncated)
+			const hoveringNotTruncated = !!(titleContainer?.titleHovered && !titleContainer?.titleTruncated)
+
+			// If the full title fits, use that width. Otherwise, let hover logic take over.
+			const fullWidthFits = desiredNormal < maxWidth
+			dynamicIsland.shortTitleActive = fullWidthFits // Reuse this flag to control layout
+
+			let desired = fullWidthFits
+				? desiredNormal
+				: (hoveringTruncated ? desiredHover : desiredNormal)
+
+			const clamped = Math.max(minWidth, Math.min(desired, maxWidth))
+			console.log("Media desired width:", desired, "clamped:", clamped, "title measured:", titleWidth, "fullWidthFits:", fullWidthFits, "hoveringTruncated:", hoveringTruncated)
 			return clamped
 		} else if (showActiveWindow) {
 			// Prefer baseline-measured title width (hidden measurer), then fallback to implicitWidth
+			dynamicIsland.shortTitleActive = false
 			let measured = (activeWindowTitleMeasure?.contentWidth || 0)
 			if (measured <= 0) measured = activeWindowTitle?.implicitWidth || 0
 			let fallbackText = root.activeWindow?.title || ""
@@ -150,6 +170,7 @@ Item {
 			console.log("Window desired width:", desired, "clamped:", clamped)
 			return clamped
 		}
+		dynamicIsland.shortTitleActive = false
 		console.log("Using base width:", baseWidth)
 		return baseWidth
 	}
@@ -250,6 +271,17 @@ Item {
 		anchors.fill: parent
 		spacing: 8
 
+		// Hidden measurer for stable baseline media title width
+		StyledText {
+			id: mediaTitleMeasure
+			visible: false
+			text: (MprisController.activePlayer?.trackTitle || "") + (MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer?.trackArtist : "")
+			font.pixelSize: Appearance.font.pixelSize.small
+			elide: Text.ElideNone
+			horizontalAlignment: Text.AlignLeft
+			clip: false
+		}
+
 		// Media section
 		Item {
 			visible: dynamicIsland.mediaActive
@@ -263,18 +295,24 @@ Item {
 				Item {
 					id: titleContainer
 					Layout.fillWidth: true
-					Layout.maximumWidth: titleHovered ? (dynamicIsland.width - 120) : (dynamicIsland.width - 160) // Dynamic based on island width, leaving space for controls
+					// Leave room for progress + controls + paddings using shared metrics
+					// IMPORTANT: For short titles we always reserve normal progress width (no hover compaction)
+					Layout.preferredWidth: {
+						let measured = mediaTitleMeasure?.contentWidth || 0
+						return measured > 0 ? measured + 12 : 0
+					}
 					Layout.fillHeight: true
 					Layout.alignment: Qt.AlignVCenter
 					Layout.leftMargin: 8
+
 					
 					property bool titleHovered: false
+					// Reactive: true only if, with current container width (which expands on hover), text still overflows
 					property bool titleTruncated: mediaTitle.implicitWidth > titleScrollContainer.width
-					property bool shouldAnimateTitle: titleTruncated && titleHovered
+					property bool shouldAnimateTitle: titleHovered && (mediaTitle.implicitWidth > titleScrollContainer.width)
 					
 					// Recalculate island width when hover/truncation state changes
 					onTitleHoveredChanged: if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
-					onTitleTruncatedChanged: if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
 					
 					Behavior on Layout.maximumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
@@ -320,15 +358,9 @@ Item {
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 							Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
 							
-							// Check if text is truncated
-							onTextChanged: {
-								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
-								if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
-							}
-							onImplicitWidthChanged: {
-								titleContainer.titleTruncated = implicitWidth > titleScrollContainer.width
-								if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
-							}
+							// When media text changes, just recalc width; do not override titleTruncated binding
+							onTextChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
+							onImplicitWidthChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
 							
 							// Horizontal scrolling animation when hovered and still truncated
 							SequentialAnimation {
@@ -475,12 +507,27 @@ Item {
 						anchors.fill: parent
 						highlightColor: Appearance.colors.colPrimary
 						trackColor: Appearance.colors.colLayer1
+						// Initial value
 						value: (MprisController.activePlayer?.length > 0 && MprisController.activePlayer?.position >= 0) ? MprisController.activePlayer.position / MprisController.activePlayer.length : 0
 						sperm: MprisController.activePlayer?.isPlaying ? true : false
 						spermAmplitudeMultiplier: MprisController.activePlayer?.isPlaying ? 0.2 : 0.0
 						valueBarHeight: 3
 						valueBarWidth: parent.width
 						valueBarGap: 10
+
+						// Timer to force progress updates, as the binding can be unreliable
+						Timer {
+							interval: 500 // Update twice a second
+							running: MprisController.activePlayer?.isPlaying
+							repeat: true
+							onTriggered: {
+								if (MprisController.activePlayer && MprisController.activePlayer.length > 0) {
+									dynamicIslandProgressBar.value = MprisController.activePlayer.position / MprisController.activePlayer.length;
+								} else {
+									dynamicIslandProgressBar.value = 0;
+								}
+							}
+						}
 					}
 				}
 				RippleButton {

@@ -68,6 +68,10 @@ Item {
                     ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low"))
                     + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
                 }
+                ,
+                { icon: "device_thermostat", label: Translation.tr("Temp:"), value: isFinite(ResourceUsage.cpuTempC) ? `${ResourceUsage.cpuTempC}°C` : "" }
+                ,
+                { icon: "air", label: Translation.tr("Fan:"), value: isFinite(ResourceUsage.cpuFanRpm) ? `${Math.round(ResourceUsage.cpuFanRpm)} RPM` : "" }
             ]
         }
 

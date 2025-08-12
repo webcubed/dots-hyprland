@@ -7,6 +7,10 @@ import QtQuick.Layouts
 
 StyledPopup {
     id: root
+    // Request right-edge alignment from StyledPopup's window margins logic
+    rightAligned: true
+    // Use the same margin as the right sidebar button in `BarContent.qml`
+    rightEdgeMargin: Appearance.rounding.screenRounding
     
     ColumnLayout {
         id: columnLayout

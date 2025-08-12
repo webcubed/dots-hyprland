@@ -11,13 +11,21 @@ LazyLoader {
     property MouseArea hoverTarget
     default property Item contentItem
 
+    // Optional: align the popup's right edge to a screen margin.
+    // If false (default), the popup is centered above the hoverTarget as before.
+    property bool rightAligned: false
+    // Margin from the screen's right edge to align the popup background's right edge to.
+    // Only used when rightAligned is true.
+    property real rightEdgeMargin: 0
+
     active: hoverTarget && hoverTarget.containsMouse
 
     component: PanelWindow {
         id: popupWindow
         color: "transparent"
 
-        anchors.left: true
+        anchors.left: !root.rightAligned
+        anchors.right: root.rightAligned
         anchors.top: !Config.options.bar.bottom
         anchors.bottom: Config.options.bar.bottom
 
@@ -27,10 +35,17 @@ LazyLoader {
         exclusionMode: ExclusionMode.Ignore
         exclusiveZone: 0
         margins {
-            left: root.QsWindow?.mapFromItem(
-                root.hoverTarget, 
-                (root.hoverTarget.width - popupBackground.implicitWidth) / 2, 0
-                ).x
+            // When right-aligned, attach to the right screen edge and set right margin.
+            // Compensate for window vs background centering by subtracting hyprlandGapsOut.
+            right: root.rightAligned
+                ? Math.max(0, root.rightEdgeMargin - Appearance.sizes.hyprlandGapsOut)
+                : undefined
+            left: root.rightAligned
+                ? undefined
+                : root.QsWindow?.mapFromItem(
+                    root.hoverTarget,
+                    (root.hoverTarget.width - popupBackground.implicitWidth) / 2, 0
+                  ).x
             top: Config?.options.bar.bottom ? 0 : Appearance.sizes.barHeight
             bottom: Config?.options.bar.bottom ? Appearance.sizes.barHeight : 0
         }

@@ -205,12 +205,15 @@ Item { // Bar content region
 
         BarGroup {
             id: leftCenterGroup
-            Layout.preferredWidth: Appearance.sizes.barCenterSideModuleWidthHellaShortened
+            // Size to content: use BarGroup's implicitWidth (row contents + padding)
+            Layout.fillWidth: false
             Layout.fillHeight: true
 
             Resources {
+                id: resources
                 alwaysShowAllResources: root.useShortenedForm === 2
-                Layout.fillWidth: root.useShortenedForm === 2
+                // Only consume needed width; do not stretch
+                Layout.fillWidth: false
             }
 			    
 
