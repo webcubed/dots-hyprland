@@ -357,7 +357,8 @@ Item { // Bar content region
                     Layout.fillWidth: false
 
                     implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
-                    implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
+                    // Clamp button height so it doesn't fill the entire bar height
+                    implicitHeight: Math.max(26, Appearance.sizes.baseBarHeight - 6)
 
                     buttonRadius: Appearance.rounding.full
                     colBackground: barRightSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
@@ -385,7 +386,8 @@ Item { // Bar content region
 
                         Revealer {
                             reveal: Audio.sink?.audio?.muted ?? false
-                            Layout.fillHeight: true
+                            // Avoid stretching to full height; center vertically instead
+                            Layout.alignment: Qt.AlignVCenter
                             Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
                             Behavior on Layout.rightMargin {
                                 NumberAnimation {
@@ -402,7 +404,8 @@ Item { // Bar content region
                         }
                         Revealer {
                             reveal: Audio.source?.audio?.muted ?? false
-                            Layout.fillHeight: true
+                            // Avoid stretching to full height; center vertically instead
+                            Layout.alignment: Qt.AlignVCenter
                             Layout.rightMargin: reveal ? indicatorsRowLayout.realSpacing : 0
                             Behavior on Layout.rightMargin {
                                 NumberAnimation {
@@ -438,7 +441,10 @@ Item { // Bar content region
                             iconSize: Appearance.font.pixelSize.larger
                             color: rightSidebarButton.colText
                         }
-						BatteryIndicator{}
+						BatteryIndicator {
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.preferredHeight: Math.max(20, Appearance.sizes.baseBarHeight - 8)
+                        }
                     }
                 }
 
