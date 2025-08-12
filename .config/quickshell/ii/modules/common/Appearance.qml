@@ -15,9 +15,26 @@ Singleton {
     property QtObject sizes
     property string syntaxHighlightingTheme
 
-    // Extremely conservative transparency values for consistency and readability
-    property real transparency: Config.options?.appearance.transparency ? (m3colors.darkmode ? 0.1 : 0.07) : 0
-    property real contentTransparency: Config.options?.appearance.transparency ? (m3colors.darkmode ? 0.55 : 0.55) : 0
+    // Transparency. The quadratic functions were derived from analysis of hand-picked transparency values.
+    ColorQuantizer {
+        id: wallColorQuant
+        source: Qt.resolvedUrl(Config.options.background.wallpaperPath)
+        depth: 0 // 2^0 = 1 color
+        rescaleSize: 10
+    }
+    property real wallpaperVibrancy: (wallColorQuant.colors[0]?.hslSaturation + wallColorQuant.colors[0]?.hslLightness) / 2
+    property real autoBackgroundTransparency: { // y = 0.5768x^2 - 0.759x + 0.2896
+        let x = wallpaperVibrancy
+        let y = 0.5768 * (x * x) - 0.759 * (x) + 0.2896
+        return Math.max(0, Math.min(0.22, y))
+    }
+    property real autoContentTransparency: { // y = -10.1734x^2 + 3.4457x + 0.1872
+        let x = autoBackgroundTransparency
+        let y = -10.1734 * (x * x) + 3.4457 * (x) + 0.1872
+        return Math.max(0, Math.min(0.6, y))
+    }
+    property real backgroundTransparency: Config?.options.appearance.transparency.enable ? Config?.options.appearance.transparency.automatic ? autoBackgroundTransparency : Config?.options.appearance.transparency.backgroundTransparency : 0
+    property real contentTransparency: Config?.options.appearance.transparency.enable ? Config?.options.appearance.transparency.automatic ? autoContentTransparency : Config?.options.appearance.transparency.contentTransparency : 0
 
     m3colors: QtObject {
         property bool darkmode: true
@@ -118,8 +135,14 @@ Singleton {
         property color colLayer2Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer2, colOnLayer2, 0.90), root.contentTransparency)
         property color colLayer2Active: ColorUtils.transparentize(ColorUtils.mix(colLayer2, colOnLayer2, 0.80), root.contentTransparency);
         property color colLayer2Disabled: ColorUtils.transparentize(ColorUtils.mix(colLayer2, m3colors.m3background, 0.8), root.contentTransparency);
+        property color colLayer3: ColorUtils.transparentize(m3colors.m3surfaceContainerHigh, root.contentTransparency)
+        property color colOnLayer3: m3colors.m3onSurface;
         property color colLayer3Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer3, colOnLayer3, 0.90), root.contentTransparency)
         property color colLayer3Active: ColorUtils.transparentize(ColorUtils.mix(colLayer3, colOnLayer3, 0.80), root.contentTransparency);
+        property color colLayer4: ColorUtils.transparentize(m3colors.m3surfaceContainerHighest, root.contentTransparency)
+        property color colOnLayer4: m3colors.m3onSurface;
+        property color colLayer4Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer4, colOnLayer4, 0.90), root.contentTransparency)
+        property color colLayer4Active: ColorUtils.transparentize(ColorUtils.mix(colLayer4, colOnLayer4, 0.80), root.contentTransparency);
         property color colPrimary: m3colors.m3primary
         property color colOnPrimary: m3colors.m3onPrimary
         property color colPrimaryHover: ColorUtils.mix(colors.colPrimary, colLayer1Hover, 0.87)

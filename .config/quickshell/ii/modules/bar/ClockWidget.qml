@@ -1,8 +1,10 @@
-import QtQuick
-import QtQuick.Layouts
+import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
 
 Item {
     id: root
@@ -38,7 +40,16 @@ Item {
             color: "#cad3f5"
             text: DateTime.date
         }
-
     }
 
+    MouseArea {
+        id: mouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+
+        ClockWidgetTooltip {
+            hoverTarget: mouseArea
+        }
+    }
 }
