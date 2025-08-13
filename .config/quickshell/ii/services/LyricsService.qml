@@ -91,7 +91,7 @@ Singleton {
     property string _pendingRequest: "" // "netease_search" | "netease_lyric" | ""
     property int _neteaseSongId: 0
     // Musixmatch flow state
-    // "musixmatch_matcher" | "musixmatch_search" | "musixmatch_subtitle" | "musixmatch_lyrics"
+    // "musixmatch_macro" | "musixmatch_richsync" | "musixmatch_fallback_lrc" | "musixmatch_lyrics"
     property int _musixmatchTrackId: 0
 
     // Attempt providers in order (prioritize karaoke-capable):
@@ -139,16 +139,18 @@ Singleton {
             url = `${base.replace(/\/$/, "")}/search?limit=1&type=1&keywords=${keywords}`
             _pendingRequest = "netease_search"
         } else if (_currentProvider === "musixmatch") {
-            // Docs: https://docs.musixmatch.com/lyrics-api
-            // Try matcher.subtitle.get first (returns LRC when subtitle_format=lrc)
+            // Prefer desktop API with macro to retrieve richsync (karaoke) if available
+            // Example: https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get?format=json&namespace=lyrics_richsynched&subtitle_format=mxm&app_id=web-desktop-app-v1.0&q_album=...&q_artist=...&q_track=...&q_duration=240&f_subtitle_length=240&usertoken=TOKEN
             const key = Config.options?.lyrics?.musixmatch?.apiKey || ""
             if (!key) { _tryNextProvider(); return }
             _musixmatchTrackId = 0
-            const base = "https://api.musixmatch.com/ws/1.1"
+            const base = "https://apic-desktop.musixmatch.com/ws/1.1"
             const trackQ = encodeURIComponent(_qTrack)
             const artistQ = encodeURIComponent(_qArtist)
-            url = `${base}/matcher.subtitle.get?q_track=${trackQ}&q_artist=${artistQ}&subtitle_format=lrc&apikey=${encodeURIComponent(key)}`
-            _pendingRequest = "musixmatch_matcher"
+            const durSec = Math.max(0, Math.round((_lenMs() || 0) / 1000))
+            const lenParam = durSec > 0 ? `&q_duration=${durSec}&f_subtitle_length=${durSec}` : ""
+            url = `${base}/macro.subtitles.get?format=json&namespace=lyrics_richsynched&subtitle_format=mxm&app_id=web-desktop-app-v1.0&q_artist=${artistQ}&q_track=${trackQ}${lenParam}&usertoken=${encodeURIComponent(key)}`
+            _pendingRequest = "musixmatch_macro"
         }
         console.log("LyricsService: fetching provider=", _currentProvider, "url=", url)
         // Add HTTP code marker for all providers; include optional UA header
@@ -300,78 +302,93 @@ Singleton {
                     }
                 } else if (root._currentProvider === "musixmatch") {
                     const key = Config.options?.lyrics?.musixmatch?.apiKey || ""
-                    const base = "https://api.musixmatch.com/ws/1.1"
+                    const base = "https://apic-desktop.musixmatch.com/ws/1.1"
                     if (!key) { root._tryNextProvider(); return }
                     try {
                         const resp = JSON.parse(raw)
-                        if (root._pendingRequest === "musixmatch_matcher") {
-                            // matcher.subtitle.get response
-                            const subBody = resp?.message?.body?.subtitle?.subtitle_body
-                                || resp?.message?.body?.subtitle_list?.[0]?.subtitle?.subtitle_body || ""
-                            if (subBody && /\[\d{1,2}:\d{1,2}/.test(subBody)) {
-                                root.lines = parseSynced(subBody)
-                                root.synced = true
-                                root.karaoke = false
-                                root.karaokeLines = []
-                                root.available = root.lines.length > 0
-                                root._pendingRequest = ""
-                                console.log("LyricsService: Musixmatch matcher subtitle parsed lines=", root.lines.length)
-                            } else {
-                                // Fallback to search → subtitle
-                                const trackQ = encodeURIComponent(root._qTrack)
-                                const artistQ = encodeURIComponent(root._qArtist)
-                                const url2 = `${base}/track.search?q_track=${trackQ}&q_artist=${artistQ}&page_size=1&s_track_rating=desc&apikey=${encodeURIComponent(key)}`
-                                root._pendingRequest = "musixmatch_search"
-                                const _ua = Config.options?.networking?.userAgent || ""
-                                const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
-                                console.log("LyricsService: Musixmatch search")
-                                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
-                                fetchProc.running = true
-                                return
+                        if (root._pendingRequest === "musixmatch_macro") {
+                            // Macro response may already include richsync
+                            const macro = resp?.message?.body
+                            let rich = macro?.macro_calls?.["track.richsync.get"]?.message?.body?.richsync
+                                || macro?.richsync
+                                || macro?.subtitle_list?.[0]?.subtitle?.subtitle_body
+                                || ""
+                            // If richsync isn't directly present, try getting commontrack_id for explicit call
+                            if (!rich) {
+                                const commonId = macro?.macro_calls?.["matcher.track.get"]?.message?.body?.track?.commontrack_id
+                                    || macro?.track_list?.[0]?.track?.commontrack_id
+                                if (commonId) {
+                                    const url2 = `${base}/track.richsync.get?format=json&subtitle_format=mxm&app_id=web-desktop-app-v1.0&commontrack_id=${commonId}&usertoken=${encodeURIComponent(key)}`
+                                    root._pendingRequest = "musixmatch_richsync"
+                                    const _ua = Config.options?.networking?.userAgent || ""
+                                    const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+                                    console.log("LyricsService: Musixmatch track.richsync.get commontrack_id=", commonId)
+                                    fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
+                                    fetchProc.running = true
+                                    return
+                                }
                             }
-                        } else if (root._pendingRequest === "musixmatch_search") {
-                            const list = resp?.message?.body?.track_list || []
-                            const id = list?.[0]?.track?.track_id
-                            if (!id) { root._pendingRequest = ""; root._tryNextProvider(); return }
-                            root._musixmatchTrackId = id
-                            const url2 = `${base}/track.subtitle.get?track_id=${id}&subtitle_format=lrc&apikey=${encodeURIComponent(key)}`
-                            root._pendingRequest = "musixmatch_subtitle"
-                            const _ua = Config.options?.networking?.userAgent || ""
-                            const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
-                            console.log("LyricsService: Musixmatch track.subtitle.get id=", id)
-                            fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
-                            fetchProc.running = true
-                            return
-                        } else if (root._pendingRequest === "musixmatch_subtitle") {
-                            const subBody = resp?.message?.body?.subtitle?.subtitle_body || ""
-                            if (subBody && /\[\d{1,2}:\d{1,2}/.test(subBody)) {
-                                root.lines = parseSynced(subBody)
-                                root.synced = true
-                                root.karaoke = false
-                                root.karaokeLines = []
-                                root.available = root.lines.length > 0
-                                root._pendingRequest = ""
-                                console.log("LyricsService: Musixmatch subtitle parsed lines=", root.lines.length)
-                            } else if (root._musixmatchTrackId) {
-                                // Fallback to plain lyrics
-                                const url3 = `${base}/track.lyrics.get?track_id=${root._musixmatchTrackId}&apikey=${encodeURIComponent(key)}`
-                                root._pendingRequest = "musixmatch_lyrics"
-                                const _ua = Config.options?.networking?.userAgent || ""
-                                const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
-                                console.log("LyricsService: Musixmatch track.lyrics.get id=", root._musixmatchTrackId)
-                                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url3}'`]
-                                fetchProc.running = true
-                                return
+                            // If we have richsync or subtitle body, try to parse
+                            if (rich) {
+                                if (typeof rich === 'string') {
+                                    // Could be LRC or JSON mxm string
+                                    const looksLrc = /\[\d{1,2}:\d{1,2}/.test(rich)
+                                    if (looksLrc) {
+                                        root.lines = parseSynced(rich)
+                                        root.synced = true
+                                        root.karaoke = false
+                                        root.karaokeLines = []
+                                        root.available = root.lines.length > 0
+                                        root._pendingRequest = ""
+                                        console.log("LyricsService: Musixmatch LRC via macro parsed lines=", root.lines.length)
+                                    } else {
+                                        // Try mxm JSON
+                                        try {
+                                            const richObj = JSON.parse(rich)
+                                            _applyMusixmatchRichsync(richObj)
+                                            root._pendingRequest = ""
+                                        } catch (_) {
+                                            root._tryNextProvider(); return
+                                        }
+                                    }
+                                } else {
+                                    // Assume it's already a parsed object/array
+                                    _applyMusixmatchRichsync(rich)
+                                    root._pendingRequest = ""
+                                }
                             } else {
-                                root._pendingRequest = ""
+                                // Nothing useful
                                 root._tryNextProvider(); return
+                            }
+                        } else if (root._pendingRequest === "musixmatch_richsync") {
+                            const rich = resp?.message?.body?.richsync || ""
+                            if (rich) {
+                                if (typeof rich === 'string') {
+                                    try { _applyMusixmatchRichsync(JSON.parse(rich)) } catch (e) { root._tryNextProvider(); return }
+                                } else {
+                                    _applyMusixmatchRichsync(rich)
+                                }
+                                root._pendingRequest = ""
+                            } else {
+                                // As last resort try lyrics body (plain)
+                                const body = resp?.message?.body?.lyrics?.lyrics_body || ""
+                                if (body) {
+                                    let txt = body
+                                    const cut = txt.indexOf("*******"); if (cut > 0) txt = txt.slice(0, cut)
+                                    root.lines = plainToLines(txt)
+                                    root.synced = false
+                                    root.karaoke = false
+                                    root.karaokeLines = []
+                                    root.available = root.lines.length > 0
+                                    root._pendingRequest = ""
+                                } else {
+                                    root._tryNextProvider(); return
+                                }
                             }
                         } else if (root._pendingRequest === "musixmatch_lyrics") {
                             let body = resp?.message?.body?.lyrics?.lyrics_body || ""
                             if (body) {
-                                // Remove Musixmatch trailing disclaimer if present
-                                const cut = body.indexOf("*******")
-                                if (cut > 0) body = body.slice(0, cut)
+                                const cut = body.indexOf("*******"); if (cut > 0) body = body.slice(0, cut)
                                 root.lines = plainToLines(body)
                                 root.synced = false
                                 root.karaoke = false
@@ -439,6 +456,63 @@ Singleton {
             }
         }
         return out
+    }
+
+    // Parse Musixmatch richsync JSON into our karaoke structure
+    // Accepts variants where:
+    // - lines array is under rich.lines or rich['lines'] or richsync.lines
+    // - line start is under 'time' or 'ts'
+    // - word array is under 'words' or 'w'
+    // - word keys: time 't' or 'time', duration 'd' or 'duration', text 'text' or 'c'
+    function parseMusixmatchRichsync(rich) {
+        try {
+            const body = (rich && rich.richsync) ? rich.richsync : rich
+            const lines = body?.lines || body?.richsync?.lines || []
+            const out = []
+            for (let i = 0; i < lines.length; i++) {
+                const L = lines[i] || {}
+                const wordsArr = L.words || L.w || []
+                const start = (typeof L.time === 'number' ? L.time : (typeof L.ts === 'number' ? L.ts : 0))
+                const words = []
+                let text = typeof L.text === 'string' ? L.text : (typeof L.l === 'string' ? L.l : "")
+                for (let j = 0; j < wordsArr.length; j++) {
+                    const W = wordsArr[j] || {}
+                    const t = (typeof W.t === 'number' ? W.t : (typeof W.time === 'number' ? W.time : 0))
+                    const d = (typeof W.d === 'number' ? W.d : (typeof W.duration === 'number' ? W.duration : 0))
+                    const wtxt = (typeof W.text === 'string' ? W.text : (typeof W.c === 'string' ? W.c : ""))
+                    words.push({ t: t, d: d, text: wtxt })
+                }
+                if (!text && words.length > 0) {
+                    // Build line text from word texts
+                    text = words.map(w => w.text).join("").trim()
+                }
+                if (words.length > 0 || text) {
+                    const lineStart = words.length > 0 ? words[0].t : start
+                    out.push({ start: lineStart, text: text, words: words })
+                }
+            }
+            // Sort by start time
+            out.sort((a, b) => (a.start - b.start))
+            return out
+        } catch (e) {
+            return []
+        }
+    }
+
+    // Apply Musixmatch richsync to service state
+    function _applyMusixmatchRichsync(rich) {
+        const structured = parseMusixmatchRichsync(rich)
+        if (structured.length > 0) {
+            root.karaokeLines = structured
+            root.lines = structured.map(l => ({ time: l.start, text: l.text }))
+            root.synced = true
+            root.karaoke = true
+            root.available = root.lines.length > 0
+            console.log("LyricsService: Musixmatch richsync parsed lines=", root.lines.length)
+        } else {
+            // No richsync; try to fallback if caller wishes
+            console.log("LyricsService: Musixmatch richsync empty or invalid")
+        }
     }
 
     // Parse LRC format
