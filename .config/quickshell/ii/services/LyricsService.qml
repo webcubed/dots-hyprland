@@ -90,15 +90,20 @@ Singleton {
     // NetEase flow state
     property string _pendingRequest: "" // "netease_search" | "netease_lyric" | ""
     property int _neteaseSongId: 0
+    // Musixmatch flow state
+    // "musixmatch_matcher" | "musixmatch_search" | "musixmatch_subtitle" | "musixmatch_lyrics"
+    property int _musixmatchTrackId: 0
 
     // Attempt providers in order (prioritize karaoke-capable):
-    // 0 = NetEase Cloud Music (klyric + lrc), 1 = LRCLib (synced only)
+    // 0 = NetEase Cloud Music (klyric + lrc), 1 = Musixmatch (synced LRC or plain), 2 = LRCLib (synced only)
     function _tryNextProvider() {
         const wantLrclib = !!Config.options?.lyrics?.enableLrclib
         const wantNetease = !!Config.options?.lyrics?.enableNetease
+        const wantMxm = !!Config.options?.lyrics?.musixmatch?.enable
         const providers = []
         // Prefer karaoke-capable provider first
         if (wantNetease) providers.push("netease")
+        if (wantMxm) providers.push("musixmatch")
         if (wantLrclib) providers.push("lrclib")
         if (providers.length === 0) {
             loading = false
@@ -133,10 +138,23 @@ Singleton {
             console.log("LyricsService: NetEase search raw artist=", _qArtist, "track=", _qTrack, "keywords=", keywords)
             url = `${base.replace(/\/$/, "")}/search?limit=1&type=1&keywords=${keywords}`
             _pendingRequest = "netease_search"
+        } else if (_currentProvider === "musixmatch") {
+            // Docs: https://docs.musixmatch.com/lyrics-api
+            // Try matcher.subtitle.get first (returns LRC when subtitle_format=lrc)
+            const key = Config.options?.lyrics?.musixmatch?.apiKey || ""
+            if (!key) { _tryNextProvider(); return }
+            _musixmatchTrackId = 0
+            const base = "https://api.musixmatch.com/ws/1.1"
+            const trackQ = encodeURIComponent(_qTrack)
+            const artistQ = encodeURIComponent(_qArtist)
+            url = `${base}/matcher.subtitle.get?q_track=${trackQ}&q_artist=${artistQ}&subtitle_format=lrc&apikey=${encodeURIComponent(key)}`
+            _pendingRequest = "musixmatch_matcher"
         }
         console.log("LyricsService: fetching provider=", _currentProvider, "url=", url)
-        // Add HTTP code marker for all providers
-        fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 -w '\n%{http_code}\n' '${url}'`]
+        // Add HTTP code marker for all providers; include optional UA header
+        const _ua = Config.options?.networking?.userAgent || ""
+        const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+        fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url}'`]
         fetchProc.running = true
     }
 
@@ -216,7 +234,9 @@ Singleton {
                             const url2 = `${base.replace(/\/$/, "")}/lyric?id=${id}`
                             root._pendingRequest = "netease_lyric"
                             console.log("LyricsService: fetching NetEase lyric url=", url2)
-                            fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 -w '\n%{http_code}\n' '${url2}'`]
+                            const _ua = Config.options?.networking?.userAgent || ""
+                            const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+                            fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
                             fetchProc.running = true
                             return
                         } catch (e) {
@@ -277,6 +297,101 @@ Singleton {
                     } else {
                         root._tryNextProvider();
                         return
+                    }
+                } else if (root._currentProvider === "musixmatch") {
+                    const key = Config.options?.lyrics?.musixmatch?.apiKey || ""
+                    const base = "https://api.musixmatch.com/ws/1.1"
+                    if (!key) { root._tryNextProvider(); return }
+                    try {
+                        const resp = JSON.parse(raw)
+                        if (root._pendingRequest === "musixmatch_matcher") {
+                            // matcher.subtitle.get response
+                            const subBody = resp?.message?.body?.subtitle?.subtitle_body
+                                || resp?.message?.body?.subtitle_list?.[0]?.subtitle?.subtitle_body || ""
+                            if (subBody && /\[\d{1,2}:\d{1,2}/.test(subBody)) {
+                                root.lines = parseSynced(subBody)
+                                root.synced = true
+                                root.karaoke = false
+                                root.karaokeLines = []
+                                root.available = root.lines.length > 0
+                                root._pendingRequest = ""
+                                console.log("LyricsService: Musixmatch matcher subtitle parsed lines=", root.lines.length)
+                            } else {
+                                // Fallback to search → subtitle
+                                const trackQ = encodeURIComponent(root._qTrack)
+                                const artistQ = encodeURIComponent(root._qArtist)
+                                const url2 = `${base}/track.search?q_track=${trackQ}&q_artist=${artistQ}&page_size=1&s_track_rating=desc&apikey=${encodeURIComponent(key)}`
+                                root._pendingRequest = "musixmatch_search"
+                                const _ua = Config.options?.networking?.userAgent || ""
+                                const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+                                console.log("LyricsService: Musixmatch search")
+                                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
+                                fetchProc.running = true
+                                return
+                            }
+                        } else if (root._pendingRequest === "musixmatch_search") {
+                            const list = resp?.message?.body?.track_list || []
+                            const id = list?.[0]?.track?.track_id
+                            if (!id) { root._pendingRequest = ""; root._tryNextProvider(); return }
+                            root._musixmatchTrackId = id
+                            const url2 = `${base}/track.subtitle.get?track_id=${id}&subtitle_format=lrc&apikey=${encodeURIComponent(key)}`
+                            root._pendingRequest = "musixmatch_subtitle"
+                            const _ua = Config.options?.networking?.userAgent || ""
+                            const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+                            console.log("LyricsService: Musixmatch track.subtitle.get id=", id)
+                            fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url2}'`]
+                            fetchProc.running = true
+                            return
+                        } else if (root._pendingRequest === "musixmatch_subtitle") {
+                            const subBody = resp?.message?.body?.subtitle?.subtitle_body || ""
+                            if (subBody && /\[\d{1,2}:\d{1,2}/.test(subBody)) {
+                                root.lines = parseSynced(subBody)
+                                root.synced = true
+                                root.karaoke = false
+                                root.karaokeLines = []
+                                root.available = root.lines.length > 0
+                                root._pendingRequest = ""
+                                console.log("LyricsService: Musixmatch subtitle parsed lines=", root.lines.length)
+                            } else if (root._musixmatchTrackId) {
+                                // Fallback to plain lyrics
+                                const url3 = `${base}/track.lyrics.get?track_id=${root._musixmatchTrackId}&apikey=${encodeURIComponent(key)}`
+                                root._pendingRequest = "musixmatch_lyrics"
+                                const _ua = Config.options?.networking?.userAgent || ""
+                                const _uaHeader = _ua ? `-H 'User-Agent: ${_ua.replace(/'/g, "'\\''")}'` : ""
+                                console.log("LyricsService: Musixmatch track.lyrics.get id=", root._musixmatchTrackId)
+                                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader} -w '\n%{http_code}\n' '${url3}'`]
+                                fetchProc.running = true
+                                return
+                            } else {
+                                root._pendingRequest = ""
+                                root._tryNextProvider(); return
+                            }
+                        } else if (root._pendingRequest === "musixmatch_lyrics") {
+                            let body = resp?.message?.body?.lyrics?.lyrics_body || ""
+                            if (body) {
+                                // Remove Musixmatch trailing disclaimer if present
+                                const cut = body.indexOf("*******")
+                                if (cut > 0) body = body.slice(0, cut)
+                                root.lines = plainToLines(body)
+                                root.synced = false
+                                root.karaoke = false
+                                root.karaokeLines = []
+                                root.available = root.lines.length > 0
+                                root._pendingRequest = ""
+                                console.log("LyricsService: Musixmatch plain lyrics lines=", root.lines.length)
+                            } else {
+                                root._pendingRequest = ""
+                                root._tryNextProvider(); return
+                            }
+                        } else {
+                            // Unexpected state; try next
+                            root._pendingRequest = ""
+                            root._tryNextProvider(); return
+                        }
+                    } catch (e) {
+                        // Parsing or structure error; try next provider
+                        root._pendingRequest = ""
+                        root._tryNextProvider(); return
                     }
                 }
                 // Update the currently displayed line immediately
