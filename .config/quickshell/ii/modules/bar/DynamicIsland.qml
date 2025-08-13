@@ -176,9 +176,31 @@ Item {
 	}
 
 	// Visualizer data properties - connected to global state
-	property list<real> visualizerPoints: GlobalStates.visualizerPoints || []
+	property list<var> visualizerPoints: GlobalStates.visualizerPoints || []
 	property real maxVisualizerValue: 1000
-	property int visualizerSmoothing: 2
+	property int visualizerSmoothing: 1
+
+	// Ensure visualizer data even if MediaControls isn't loaded
+	Process {
+		id: cavaProcIsland
+		running: MprisController.activePlayer?.isPlaying || false
+		onRunningChanged: {
+			if (!running) {
+				visualizerPoints = []
+				if (typeof GlobalStates !== 'undefined') GlobalStates.visualizerPoints = []
+			}
+		}
+		command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
+		stdout: SplitParser {
+			onRead: data => {
+				console.log("DynamicIsland CAVA data received")
+				let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+				console.log("DynamicIsland: points length", points.length, "first few:", points.slice(0,5))
+				visualizerPoints = points;
+				if (typeof GlobalStates !== 'undefined') GlobalStates.visualizerPoints = points;
+			}
+		}
+	}
 
 	// Debug visualizer data connection
 	onVisualizerPointsChanged: {
@@ -210,59 +232,46 @@ Item {
 		anchors.fill: parent
 		color: "transparent" // Match the bar's transparent background approach
 		radius: Appearance.rounding.full
+		clip: true
 		
-		// Visualizer bars - extend entire width, align to bottom
-		Row {
-			anchors.left: parent.left
-			anchors.right: parent.right
-			anchors.bottom: parent.bottom
-			anchors.leftMargin: 4
-			anchors.rightMargin: 4
-			spacing: Math.max(1, (parent.width - 8) / 50) // Dynamic spacing to fill width
-			opacity: MprisController.activePlayer?.isPlaying ? 0.15 : 0
-			visible: opacity > 0
-			
-			Behavior on opacity { 
-				NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
-			}
-			
-			Repeater {
-				model: 30 // Fewer bars but wider for better visibility
-				Rectangle {
-					width: Math.max(2, (parent.width - parent.spacing * 29) / 30) // Wider bars
-					height: Math.max(2, Math.min(12, (dynamicIsland.visualizerPoints[index] || Math.random() * 100) * 0.12))
-					color: Appearance.colors.colPrimary
-					radius: 1
-					opacity: 0.4
-					
-					// Align bars to bottom (they grow upward from bottom)
-					anchors.bottom: parent.bottom
-					
-					Behavior on height { 
-						NumberAnimation { duration: 120; easing.type: Easing.OutQuad } 
-					}
-					
-					// Add some random animation for testing
-					Timer {
-						interval: 80 + (index * 15)
-						running: MprisController.activePlayer?.isPlaying
-						repeat: true
-						onTriggered: {
-							parent.height = Math.max(2, Math.min(12, Math.random() * 12))
-						}
-					}
-				}
-			}
-		}
+		// Background only; WaveVisualizer moved to a sibling to control stacking order
 	}
 
 	MouseArea {
 		anchors.fill: parent
+		z: 200 // keep interactions above overlay
 		hoverEnabled: true
 		onEntered: dynamicIsland.hovered = true
 		onExited: dynamicIsland.hovered = false
 		onClicked: {
 			GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
+		}
+	}
+
+	// Wave visualizer on top, clipped to rounded island
+	Rectangle {
+		anchors.fill: parent
+		z: -1
+		color: "transparent"
+		radius: Appearance.rounding.full
+		clip: true
+		// MouseArea has z:200, so interactions are not affected
+		WaveVisualizer {
+			anchors.fill: parent
+			live: MprisController.activePlayer?.isPlaying
+			points: dynamicIsland.visualizerPoints
+			maxVisualizerValue: dynamicIsland.maxVisualizerValue
+			smoothing: dynamicIsland.visualizerSmoothing
+			color: Appearance.colors.colPrimary
+			// Tune for short island height
+			amplitude: 1.2
+			minFill: 0.0
+			heightRatio: 1   // use ~55% of height
+			baseOffset: 0.0   // keep 20% headroom at top
+			fillAlpha: live ? 0.55 : 0.0
+			blurAmount: 0.2
+			strokeOpacity: 0.12
+			autoScale: true
 		}
 	}
 

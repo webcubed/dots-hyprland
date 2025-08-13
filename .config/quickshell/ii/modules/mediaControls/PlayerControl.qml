@@ -112,14 +112,9 @@ Item { // Player instance
         color: blendedColors.colLayer0
         radius: root.popupRounding
 
+        // Clip children to rounded corners instead of using OpacityMask
+        clip: true
         layer.enabled: true
-        layer.effect: OpacityMask {
-            maskSource: Rectangle {
-                width: background.width
-                height: background.height
-                radius: background.radius
-            }
-        }
 
         Image {
             id: blurredArt
