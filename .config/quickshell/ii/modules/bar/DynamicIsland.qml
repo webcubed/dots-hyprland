@@ -264,10 +264,10 @@ Item {
 			smoothing: dynamicIsland.visualizerSmoothing
 			color: Appearance.colors.colPrimary
 			// Tune for short island height
-			amplitude: 1.2
+			amplitude: 0.9
 			minFill: 0.0
-			heightRatio: 1   // use ~55% of height
-			baseOffset: 0.0   // keep 20% headroom at top
+			heightRatio: 0.9   // use ~90% of height
+			baseOffset: 0.0   // keep 0% headroom at top
 			fillAlpha: live ? 0.55 : 0.0
 			blurAmount: 0.2
 			strokeOpacity: 0.12
