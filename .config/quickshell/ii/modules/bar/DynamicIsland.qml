@@ -239,7 +239,6 @@ Item {
 
 	MouseArea {
 		anchors.fill: parent
-		z: 200 // keep interactions above overlay
 		hoverEnabled: true
 		onEntered: dynamicIsland.hovered = true
 		onExited: dynamicIsland.hovered = false
