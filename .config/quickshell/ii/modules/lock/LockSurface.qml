@@ -10,25 +10,38 @@ import "../bar"
 MouseArea {
     id: root
 
-    Rectangle {
+    Item {
         id: dynamicIslandContainer
-        visible: Config.options?.bar.showDynamicIslandOnLockScreen ?? true
+        // Only show when the setting is explicitly true
+        visible: Config.options && Config.options.bar && Config.options.bar.showDynamicIslandOnLockScreen === true
         anchors.top: parent.top
         anchors.topMargin: (Appearance.sizes.hyprlandGapsOut || 12)
         anchors.horizontalCenter: parent.horizontalCenter
+        z: 100
 
-        width: dynamicIslandLoader.item ? dynamicIslandLoader.item.width : 0
-        height: dynamicIslandLoader.item ? dynamicIslandLoader.item.height : 0
-
-        color: Appearance.colors.colLayer0
-        radius: height / 2
+        // Horizontal padding around the island
+        property int hPadding: 10
+        // Size background to island plus padding
+        width: dynamicIslandLoader.active && dynamicIslandLoader.item ? (dynamicIslandLoader.item.implicitWidth + hPadding * 2) : 0
+        height: dynamicIslandLoader.active && dynamicIslandLoader.item ? dynamicIslandLoader.item.height : 0
 
         Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
         Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
 
+        // Explicit pill background to guarantee visibility on lockscreen
+        Rectangle {
+            id: dynamicIslandBackground
+            anchors.fill: parent
+            // Use BarGroup's background color to ensure visibility on lockscreen
+            color: "#24273a"
+            radius: Appearance.rounding.full
+        }
+
         Loader {
             id: dynamicIslandLoader
             anchors.centerIn: parent
+            // Only load when explicitly enabled
+            active: Config.options && Config.options.bar && Config.options.bar.showDynamicIslandOnLockScreen === true
             sourceComponent: DynamicIsland {}
         }
     }

@@ -227,6 +227,8 @@ Item { // Bar content region
 			Loader {
             id: dynamicIslandLoader
             anchors.centerIn: parent
+            // Do not show on lock screen (lock surface is transparent)
+            active: !GlobalStates.screenLocked
             sourceComponent: DynamicIsland {}
         }}
 
