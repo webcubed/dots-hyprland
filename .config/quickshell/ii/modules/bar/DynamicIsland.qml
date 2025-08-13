@@ -134,17 +134,21 @@ Item {
 			// Fallback if not yet resolved
 			// Prioritize baseline-measured title width (hidden measurer)
 			let titleWidth = mediaTitleMeasure?.contentWidth || 0
+			// When lyrics mode is active, base the dynamic width on the current lyric line
+			let lyricWidth = GlobalStates.lyricsModeActive ? (lyricMeasure?.contentWidth || 0) : 0
+			let textWidth = GlobalStates.lyricsModeActive ? lyricWidth : titleWidth
 
 			// Compute desired widths for normal (non-hover) and hover states explicitly
 			const normalProgress = dynamicIsland.progressNormal
 			const hoverProgress = dynamicIsland.progressHover
 			const widthBuffer = 12 // Add tolerance to prevent clipping
-			let titleDesiredWidth = titleWidth + widthBuffer
-			let desiredNormal = outerPadding + titleDesiredWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
-			let desiredHover = outerPadding + titleWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons + widthBuffer
+			let textDesiredWidth = textWidth + widthBuffer
+			let desiredNormal = outerPadding + textDesiredWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
+			let desiredHover = outerPadding + textWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons + widthBuffer
 
-			const hoveringTruncated = !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
-			const hoveringNotTruncated = !!(titleContainer?.titleHovered && !titleContainer?.titleTruncated)
+			// In lyrics mode, ignore title hover/truncation behavior entirely
+			const hoveringTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
+			const hoveringNotTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && !titleContainer?.titleTruncated)
 
 			// If the full title fits, use that width. Otherwise, let hover logic take over.
 			const fullWidthFits = desiredNormal < maxWidth
@@ -155,7 +159,7 @@ Item {
 				: (hoveringTruncated ? desiredHover : desiredNormal)
 
 			const clamped = Math.max(minWidth, Math.min(desired, maxWidth))
-			console.log("Media desired width:", desired, "clamped:", clamped, "title measured:", titleWidth, "fullWidthFits:", fullWidthFits, "hoveringTruncated:", hoveringTruncated)
+			console.log("Media desired width:", desired, "clamped:", clamped, "mode:", (GlobalStates.lyricsModeActive ? "lyrics" : "title"), "text measured:", textWidth, "fullWidthFits:", fullWidthFits, "hoveringTruncated:", hoveringTruncated)
 			return clamped
 		} else if (showActiveWindow) {
 			// Prefer baseline-measured title width (hidden measurer), then fallback to implicitWidth
@@ -290,6 +294,30 @@ Item {
 			clip: false
 		}
 
+		// Hidden measurer for lyrics current line width
+		StyledText {
+			id: lyricMeasure
+			visible: false
+			text: (GlobalStates.lyricsModeActive ? (LyricsService.available ? (LyricsService.currentText || "") : Translation.tr("Fetching lyrics...")) : "")
+			font.pixelSize: Appearance.font.pixelSize.small
+			elide: Text.ElideNone
+			horizontalAlignment: Text.AlignLeft
+			clip: false
+		}
+
+		// Ensure fetch triggers when toggling lyrics mode on
+		Connections {
+			target: GlobalStates
+			function onLyricsModeActiveChanged() {
+				if (GlobalStates.lyricsModeActive) {
+					LyricsService.maybeFetch()
+					Qt.callLater(function(){ dynamicIsland.updateWidth() })
+				} else {
+					Qt.callLater(function(){ dynamicIsland.updateWidth() })
+				}
+			}
+		}
+
 		// Media section
 		Item {
 			visible: dynamicIsland.mediaActive
@@ -299,19 +327,25 @@ Item {
 			RowLayout {
 				anchors.fill: parent
 				spacing: 4
-				// Info container (title/artist or timer)
+				// Info container (title/artist or lyrics or timer)
 				Item {
 					id: titleContainer
+					// Ensure title sits above progress bar and controls
+					z: 10
 					Layout.fillWidth: true
 					// Leave room for progress + controls + paddings using shared metrics
 					// IMPORTANT: For short titles we always reserve normal progress width (no hover compaction)
 					Layout.preferredWidth: {
+						if (GlobalStates.lyricsModeActive) {
+							// In lyrics mode, allow the container to span the full available row width
+							return parent ? parent.width : 0
+						}
 						let measured = mediaTitleMeasure?.contentWidth || 0
 						return measured > 0 ? measured + 12 : 0
 					}
 					Layout.fillHeight: true
 					Layout.alignment: Qt.AlignVCenter
-					Layout.leftMargin: 8
+					Layout.leftMargin: GlobalStates.lyricsModeActive ? 0 : 8
 
 					
 					property bool titleHovered: false
@@ -320,8 +354,23 @@ Item {
 					property bool shouldAnimateTitle: titleHovered && (mediaTitle.implicitWidth > titleScrollContainer.width)
 					
 					// Recalculate island width when hover/truncation state changes
-					onTitleHoveredChanged: if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
-					
+					onTitleHoveredChanged: {
+						if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+						if (!titleHovered) {
+							// Reset scroll position when hover ends
+							mediaTitle.x = 0
+						} else if (titleContainer.titleTruncated) {
+							// Start marquee immediately on hover if truncated
+							marqueeAnim.restart()
+						}
+					}
+					onTitleTruncatedChanged: {
+						if (titleContainer.titleTruncated && titleContainer.titleHovered) {
+							marqueeAnim.restart()
+						} else if (!titleContainer.titleTruncated) {
+							mediaTitle.x = 0
+						}
+					}
 					Behavior on Layout.maximumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
 					}
@@ -330,9 +379,8 @@ Item {
 						anchors.fill: parent
 						hoverEnabled: true
 						onEntered: {
-							if (titleContainer.titleTruncated) {
-								titleContainer.titleHovered = true
-							}
+							// Start hover immediately; animation will run only if truncated
+							titleContainer.titleHovered = true
 						}
 						onExited: titleContainer.titleHovered = false
 						onClicked: {
@@ -341,87 +389,135 @@ Item {
 						}
 					}
 
-					// Title/artist info with scrolling container
-					Item {
+					// Content area: shows media title or lyrics based on flag
+					Flickable {
 						id: titleScrollContainer
-						anchors.verticalCenter: parent.verticalCenter
-						width: parent.width
-						height: parent.height
+						// Ensure the title area actually has width/height and clips overflow
+						anchors.fill: parent
 						clip: true
-						
-						StyledText {
-							id: mediaTitle
-							anchors.verticalCenter: parent.verticalCenter
-							width: titleContainer.titleHovered ? implicitWidth : Math.min(implicitWidth, titleScrollContainer.width)
-							text: !dynamicIsland.timerActive ? 
-								  // Full title and artist when no timer
-								  `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}` :
-								  ""
-							font.pixelSize: Appearance.font.pixelSize.small
-							color: Appearance.colors.colOnLayer1
-							opacity: text ? 1 : 0
-							visible: opacity > 0
-							elide: titleContainer.titleHovered ? Text.ElideNone : Text.ElideRight
-							
+						interactive: false
+						boundsBehavior: Flickable.StopAtBounds
+						contentWidth: GlobalStates.lyricsModeActive ? width : mediaTitle.implicitWidth
+						contentHeight: GlobalStates.lyricsModeActive ? height : Math.max(mediaTitle.implicitHeight, height)
+
+						// Lyrics view
+						Item {
+							id: lyricsView
+							anchors.fill: parent
+							visible: GlobalStates.lyricsModeActive && !dynamicIsland.timerActive
+							opacity: visible ? 1 : 0
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
-							Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
-							
-							// When media text changes, just recalc width; do not override titleTruncated binding
-							onTextChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
-							onImplicitWidthChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
-							
-							// Horizontal scrolling animation when hovered and still truncated
+							property string currentText: (GlobalStates.lyricsModeActive ? (LyricsService.available ? (LyricsService.currentText || "") : Translation.tr("Fetching lyrics...")) : "")
+							property string prevText: ""
+							onVisibleChanged: {
+								if (visible) {
+									// Ensure no residual scroll offset from title mode
+									titleScrollContainer.contentX = 0
+									titleScrollContainer.contentY = 0
+									if (dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+								}
+							}
+
+							// Centered stack for lyric line switching
+							Item {
+								id: lyricStack
+								anchors.centerIn: parent
+								width: parent.width
+								height: Math.max(lyricNew.implicitHeight, lyricOld.implicitHeight)
+
+								// Two-line switcher for slide animation
+								StyledText {
+									id: lyricOld
+									anchors.centerIn: parent
+									y: 0
+									opacity: 0
+									font.pixelSize: Appearance.font.pixelSize.small
+									color: Appearance.colors.colOnLayer1
+									text: lyricsView.prevText
+									elide: Text.ElideNone
+									horizontalAlignment: Text.AlignHCenter
+									width: lyricStack.width
+									onImplicitWidthChanged: { if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth) }
+								}
+								StyledText {
+									id: lyricNew
+									anchors.centerIn: parent
+									y: 0
+									opacity: 1
+									font.pixelSize: Appearance.font.pixelSize.small
+									color: Appearance.colors.colOnLayer1
+									text: lyricsView.currentText
+									elide: Text.ElideNone
+									horizontalAlignment: Text.AlignHCenter
+									width: lyricStack.width
+									onImplicitWidthChanged: { if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth) }
+								}
+							}
+
+							onCurrentTextChanged: {
+								// Prepare animation: move new from top, push old down
+								lyricOld.text = lyricNew.text
+								lyricOld.y = 0
+								lyricOld.opacity = 1
+								lyricNew.text = lyricsView.currentText
+								lyricNew.y = -lyricNew.implicitHeight
+								lyricNew.opacity = 1
+								animGrp.start()
+								// Recalculate width per line
+								Qt.callLater(function(){ if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth() })
+							}
+
 							SequentialAnimation {
-								id: scrollAnimation
-								running: titleContainer.shouldAnimateTitle
-								loops: Animation.Infinite
-								
-								// Wait before starting scroll
-								PauseAnimation { duration: 1000 }
-								
-								// Scroll to show the end
-								NumberAnimation {
-									target: mediaTitle
-									property: "x"
-									to: titleScrollContainer.width - mediaTitle.implicitWidth - 20
-									duration: Math.max(2000, (mediaTitle.implicitWidth - titleScrollContainer.width) * 15)
-									easing.type: Easing.InOutQuad
-								}
-								
-								// Wait at the end
-								PauseAnimation { duration: 1000 }
-								
-								// Scroll back to beginning
-								NumberAnimation {
-									target: mediaTitle
-									property: "x"
-									to: 0
-									duration: Math.max(2000, (mediaTitle.implicitWidth - titleScrollContainer.width) * 15)
-									easing.type: Easing.InOutQuad
-								}
-								
-								// Stop animation and reset when hover ends
-								onRunningChanged: {
-									if (!running) {
-										mediaTitle.x = 0
-									}
+								id: animGrp
+								running: false
+								ParallelAnimation {
+									NumberAnimation { target: lyricOld; property: "y"; to: lyricOld.implicitHeight; duration: 220; easing.type: Easing.OutCubic }
+									NumberAnimation { target: lyricOld; property: "opacity"; to: 0; duration: 220; easing.type: Easing.OutCubic }
+									NumberAnimation { target: lyricNew; property: "y"; to: 0; duration: 220; easing.type: Easing.OutCubic }
 								}
 							}
-							
-							// Reset position when not hovering with smooth animation
-							Behavior on x {
-								enabled: !scrollAnimation.running && !titleContainer.titleHovered
-								NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
-							}
-							
-							// Watch for hover state changes to reset position
-							Connections {
-								target: titleContainer
-								function onTitleHoveredChanged() {
-									if (!titleContainer.titleHovered) {
-										scrollAnimation.stop()
-										mediaTitle.x = 0
+						}
+
+						// Media title view (fallback when lyrics not active)
+						Item {
+							id: titleView
+							anchors.fill: parent
+							visible: !GlobalStates.lyricsModeActive && !dynamicIsland.timerActive
+							opacity: visible ? 1 : 0
+							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
+							StyledText {
+								id: mediaTitle
+								// Make sure text is on top as well
+								z: 11
+								// Place at left of content and vertically centered within the visible area
+								x: 0
+								y: Math.floor((titleScrollContainer.height - implicitHeight) / 2)
+								// Use full implicit width so Flickable can scroll the hidden part
+								width: implicitWidth
+								text: `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}`
+								font.pixelSize: Appearance.font.pixelSize.small
+								color: Appearance.colors.colOnLayer1
+								// No elide; clipping and Flickable manage visibility
+								elide: Text.ElideNone
+								// Amount to scroll when overflowing
+								property real overflow: Math.max(0, titleScrollContainer.contentWidth - titleScrollContainer.width)
+								// Marquee animation: scroll via Flickable contentX
+								SequentialAnimation {
+									id: marqueeAnim
+									loops: Animation.Infinite
+									running: titleContainer.titleHovered && titleContainer.titleTruncated
+									onRunningChanged: {
+										if (!running) titleScrollContainer.contentX = 0
 									}
+									PauseAnimation { duration: 600 }
+									NumberAnimation { target: titleScrollContainer; property: "contentX"; to: mediaTitle.overflow; duration: Math.max(2000, 40 * mediaTitle.overflow); easing.type: Easing.InOutQuad }
+									PauseAnimation { duration: 800 }
+									NumberAnimation { target: titleScrollContainer; property: "contentX"; to: 0; duration: Math.max(1200, 30 * mediaTitle.overflow); easing.type: Easing.InOutQuad }
+								}
+								onTextChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
+								onImplicitWidthChanged: {
+									if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+									if (titleContainer.titleHovered && titleContainer.titleTruncated) marqueeAnim.restart()
 								}
 							}
 						}
@@ -495,11 +591,17 @@ Item {
 				Item {
 					Layout.fillWidth: true
 					Layout.minimumWidth: titleContainer.titleHovered ? 60 : 80
-                    Layout.preferredWidth: titleContainer.titleHovered ? 80 : 120
-                    Layout.maximumWidth: titleContainer.titleHovered ? 100 : 160
+					Layout.preferredWidth: titleContainer.titleHovered ? 80 : 120
+					Layout.maximumWidth: titleContainer.titleHovered ? 100 : 160
 					Layout.preferredHeight: 8
+					// Keep progress bar visually below the title
+					z: 0
+					Layout.alignment: Qt.AlignVCenter
 					Layout.leftMargin: 4
 					Layout.rightMargin: 4
+					visible: !GlobalStates.lyricsModeActive
+					opacity: visible ? 1 : 0
+					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
 					
 					Behavior on Layout.minimumWidth { 
 						NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
@@ -539,6 +641,8 @@ Item {
 					}
 				}
 				RippleButton {
+					z: 0
+					Layout.alignment: Qt.AlignVCenter
 					Layout.preferredWidth: 18
 					Layout.preferredHeight: 18
 					padding: 0
@@ -546,6 +650,9 @@ Item {
 					colBackground: Appearance.colors.colSecondaryContainer
 					colBackgroundHover: Appearance.colors.colSecondaryContainerHover
 					colRipple: Appearance.colors.colSecondaryContainerActive
+					visible: !GlobalStates.lyricsModeActive
+					opacity: visible ? 1 : 0
+					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
 					contentItem: MaterialSymbol {
 						anchors.centerIn: parent
 						iconSize: 13
@@ -557,6 +664,7 @@ Item {
 					}
 				}
 				RippleButton {
+					Layout.alignment: Qt.AlignVCenter
 					Layout.preferredWidth: 18
 					Layout.preferredHeight: 18
 					padding: 0
@@ -565,6 +673,9 @@ Item {
 					colBackground: Appearance.colors.colPrimary
 					colBackgroundHover: Appearance.colors.colPrimaryHover
 					colRipple: Appearance.colors.colPrimaryActive
+					visible: !GlobalStates.lyricsModeActive
+					opacity: visible ? 1 : 0
+					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
 					
 					Behavior on buttonRadius { 
 						NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } 
@@ -581,6 +692,7 @@ Item {
 					}
 				}
 				RippleButton {
+					Layout.alignment: Qt.AlignVCenter
 					Layout.preferredWidth: 18
 					Layout.preferredHeight: 18
 					padding: 0
@@ -588,6 +700,9 @@ Item {
 					colBackground: Appearance.colors.colSecondaryContainer
 					colBackgroundHover: Appearance.colors.colSecondaryContainerHover
 					colRipple: Appearance.colors.colSecondaryContainerActive
+					visible: !GlobalStates.lyricsModeActive
+					opacity: visible ? 1 : 0
+					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
 					contentItem: MaterialSymbol {
 						anchors.centerIn: parent
 						iconSize: 13

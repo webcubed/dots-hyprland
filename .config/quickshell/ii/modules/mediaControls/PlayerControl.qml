@@ -264,6 +264,16 @@ Item { // Player instance
                                 cursorShape: Qt.PointingHandCursor
                             }
                         }
+                        // Toggle lyrics mode
+                        TrackChangeButton {
+                            iconName: "lyrics" // Valid Material symbol name
+                            // Highlight when active
+                            colBackground: GlobalStates.lyricsModeActive ? blendedColors.colSecondaryContainerHover : ColorUtils.transparentize(blendedColors.colSecondaryContainer, 1)
+                            colBackgroundHover: GlobalStates.lyricsModeActive ? blendedColors.colSecondaryContainerActive : blendedColors.colSecondaryContainerHover
+                            colRipple: blendedColors.colSecondaryContainerActive
+                            onClicked: GlobalStates.lyricsModeActive = !GlobalStates.lyricsModeActive
+                            Accessible.name: GlobalStates.lyricsModeActive ? "Hide lyrics" : "Show lyrics"
+                        }
                         TrackChangeButton {
                             iconName: "skip_next"
                             onClicked: playerController.player?.next()

@@ -24,6 +24,8 @@ Singleton {
     property bool superDown: false
     property bool superReleaseMightTrigger: true
     property bool workspaceShowNumbers: false
+    // Lyrics mode toggle for Dynamic Island
+    property bool lyricsModeActive: false
 
     // Horizontal center X (in window/screen coords used by PanelWindow margins) of the Dynamic Island
     // -1 means unknown/not yet set
@@ -32,6 +34,16 @@ Singleton {
     property real screenZoom: 1
     onScreenZoomChanged: {
         Quickshell.execDetached(["hyprctl", "keyword", "cursor:zoom_factor", root.screenZoom.toString()]);
+    }
+
+    // Toggle lyrics mode
+    GlobalShortcut {
+        name: "lyricsToggle"
+        description: "Toggles lyrics mode in Dynamic Island"
+
+        onPressed: {
+            root.lyricsModeActive = !root.lyricsModeActive
+        }
     }
     Behavior on screenZoom {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
