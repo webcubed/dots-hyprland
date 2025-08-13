@@ -133,6 +133,26 @@ ContentPage {
                     }
                 }
             }
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    text: Translation.tr("Show Dynamic Island on lock screen")
+                    checked: Config.options.bar.showDynamicIslandOnLockScreen
+                    onCheckedChanged: {
+                        Config.options.bar.showDynamicIslandOnLockScreen = checked;
+                    }
+                }
+            }
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    text: Translation.tr("Show background")
+                    checked: Config.options.bar.showBackground
+                    onCheckedChanged: {
+                        Config.options.bar.showBackground = checked;
+                    }
+                }
+            }
         }
 
         ContentSubsection {

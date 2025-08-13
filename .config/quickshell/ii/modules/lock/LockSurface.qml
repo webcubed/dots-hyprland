@@ -5,9 +5,34 @@ import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
+import "../bar"
 
 MouseArea {
     id: root
+
+    Rectangle {
+        id: dynamicIslandContainer
+        visible: Config.options?.bar.showDynamicIslandOnLockScreen ?? true
+        anchors.top: parent.top
+        anchors.topMargin: (Appearance.sizes.hyprlandGapsOut || 12)
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        width: dynamicIslandLoader.item ? dynamicIslandLoader.item.width : 0
+        height: dynamicIslandLoader.item ? dynamicIslandLoader.item.height : 0
+
+        color: Appearance.colors.colLayer0
+        radius: height / 2
+
+        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+        Behavior on height { NumberAnimation { duration: 400; easing.type: Easing.InOutQuad } }
+
+        Loader {
+            id: dynamicIslandLoader
+            anchors.centerIn: parent
+            sourceComponent: DynamicIsland {}
+        }
+    }
+
     required property LockContext context
     property bool active: false
     property bool showInputField: active || context.currentText.length > 0
