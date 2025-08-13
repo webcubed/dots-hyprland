@@ -123,9 +123,11 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             margins {
+                // Keep vertical positioning consistent with bar orientation
                 top: Appearance.sizes.barHeight
                 bottom: Appearance.sizes.barHeight
-                left: (mediaControlsRoot.screen.width / 2) - (osdWidth / 2) - widgetWidth
+                // Center horizontally on the Dynamic Island's center X
+                left: Math.max(0, (GlobalStates.dynamicIslandCenterX ?? (mediaControlsRoot.screen.width / 2)) - (root.widgetWidth / 2))
             }
             implicitWidth: root.widgetWidth
             implicitHeight: playerColumnLayout.implicitHeight

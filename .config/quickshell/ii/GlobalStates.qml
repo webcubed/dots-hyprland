@@ -25,6 +25,10 @@ Singleton {
     property bool superReleaseMightTrigger: true
     property bool workspaceShowNumbers: false
 
+    // Horizontal center X (in window/screen coords used by PanelWindow margins) of the Dynamic Island
+    // -1 means unknown/not yet set
+    property real dynamicIslandCenterX: -1
+
     property real screenZoom: 1
     onScreenZoomChanged: {
         Quickshell.execDetached(["hyprctl", "keyword", "cursor:zoom_factor", root.screenZoom.toString()]);

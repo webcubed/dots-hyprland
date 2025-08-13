@@ -230,6 +230,30 @@ Item { // Bar content region
             // Do not show on lock screen (lock surface is transparent)
             active: !GlobalStates.screenLocked
             sourceComponent: DynamicIsland {}
+            // Keep GlobalStates.dynamicIslandCenterX in sync with the loader's center in screen coords
+            function updateIslandCenter() {
+                try {
+                    const di = dynamicIslandLoader.item;
+                    if (!di) return;
+                    const pos = root.QsWindow?.mapFromItem(di, di.width / 2, 0);
+                    if (pos && typeof pos.x === 'number') {
+                        const winX = root.QsWindow?.window?.x ?? 0;
+                        GlobalStates.dynamicIslandCenterX = winX + pos.x;
+                        console.log("[Bar] dynamicIslandCenterX updated:", pos.x)
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            onActiveChanged: updateIslandCenter()
+            onItemChanged: updateIslandCenter()
+            onWidthChanged: updateIslandCenter()
+            onXChanged: updateIslandCenter()
+            Component.onCompleted: updateIslandCenter()
+            Connections {
+                target: dynamicIslandLoader.item
+                function onWidthChanged() { dynamicIslandLoader.updateIslandCenter() }
+                function onXChanged() { dynamicIslandLoader.updateIslandCenter() }
+                function onYChanged() { dynamicIslandLoader.updateIslandCenter() }
+            }
         }}
 
         VerticalBarSeparator {
