@@ -254,13 +254,14 @@ Item { // Bar content region
 
             BarGroup {
                 id: rightCenterGroupContent
-                anchors.fill: parent
+                //anchors.fill: parent
 				// Padding
 				padding: 10
                 ClockWidget {
                     showDate: (Config.options.bar.verbose && root.useShortenedForm < 2)
                     Layout.alignment: Qt.AlignVCenter
-                    Layout.fillWidth: true
+                    // Let the widget size to its implicitWidth computed via TextMetrics
+                    Layout.fillWidth: false
                 }
 
                 UtilButtons {
