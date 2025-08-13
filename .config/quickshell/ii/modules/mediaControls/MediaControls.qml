@@ -82,7 +82,6 @@ Scope {
         id: cavaProc
         running: root.activePlayer?.isPlaying || false // Run when media is playing, not just when controls are open
         onRunningChanged: {
-            console.log("Cava process running changed:", cavaProc.running)
             if (!cavaProc.running) {
                 root.visualizerPoints = [];
                 // Also clear global visualizer data
@@ -96,12 +95,10 @@ Scope {
             onRead: data => {
                 // Parse `;`-separated values into the visualizerPoints array
                 let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-                console.log("Cava data received, points length:", points.length, "first few:", points.slice(0, 5))
                 root.visualizerPoints = points;
                 // Also update global visualizer data for Dynamic Island
                 if (typeof GlobalStates !== 'undefined') {
                     GlobalStates.visualizerPoints = points;
-                    console.log("Updated GlobalStates.visualizerPoints, length:", points.length)
                 }
             }
         }

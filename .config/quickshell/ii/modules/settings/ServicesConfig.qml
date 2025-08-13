@@ -126,6 +126,55 @@ ContentPage {
         }
     }
 
+    // Synced/Karaoke lyrics providers
+    ContentSection {
+        title: Translation.tr("Lyrics")
+
+        ConfigSwitch {
+            text: Translation.tr("Use LRCLib (synced)")
+            checked: Config.options.lyrics.enableLrclib
+            onCheckedChanged: Config.options.lyrics.enableLrclib = checked
+            StyledToolTip { content: Translation.tr("Public LRCLib API for synced lyrics (LRC). No key needed.") }
+        }
+
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                text: Translation.tr("Use NetEase Cloud Music API (synced)")
+                checked: Config.options.lyrics.enableNetease
+                onCheckedChanged: Config.options.lyrics.enableNetease = checked
+                StyledToolTip { content: Translation.tr("Requires a self-hosted API (binaryify/NeteaseCloudMusicApi). Used only for synced LRC lyrics.") }
+            }
+        }
+        MaterialTextField {
+            Layout.fillWidth: true
+            placeholderText: Translation.tr("NetEase API base URL (e.g. http://localhost:3000)")
+            text: Config.options.lyrics.neteaseBaseUrl
+            wrapMode: TextEdit.Wrap
+            onTextChanged: Config.options.lyrics.neteaseBaseUrl = text
+        }
+
+        // Optional provider requiring API key (not enabled by default)
+        ContentSubsection {
+            title: Translation.tr("Musixmatch (planned)")
+            tooltip: Translation.tr("Musixmatch synced timings require API access; not enabled by default.")
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    text: Translation.tr("Enable Musixmatch provider")
+                    checked: Config.options.lyrics.musixmatch.enable
+                    onCheckedChanged: Config.options.lyrics.musixmatch.enable = checked
+                }
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Musixmatch API key")
+                    text: Config.options.lyrics.musixmatch.apiKey
+                    onTextChanged: Config.options.lyrics.musixmatch.apiKey = text
+                }
+            }
+        }
+    }
+
     ContentSection {
         title: Translation.tr("Resources")
         ConfigSpinBox {

@@ -251,6 +251,21 @@ Singleton {
                 property int updateInterval: 1000
             }
 
+            // Lyrics services configuration (synced/karaoke only)
+            property JsonObject lyrics: JsonObject {
+                // Enable/disable providers
+                property bool enableLrclib: true
+                property bool enableNetease: false
+                // Base URL for a self-hosted Netease Cloud Music API instance
+                // Example: "http://localhost:3000"
+                property string neteaseBaseUrl: ""
+                // Reserved for future synced provider (requires API key)
+                property JsonObject musixmatch: JsonObject {
+                    property bool enable: false
+                    property string apiKey: ""
+                }
+            }
+
             property JsonObject search: JsonObject {
                 property int nonAppResultDelay: 30 // This prevents lagging when typing
                 property string engineBaseUrl: "https://www.google.com/search?q="

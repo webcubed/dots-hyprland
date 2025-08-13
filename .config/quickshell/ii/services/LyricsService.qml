@@ -19,6 +19,10 @@ Singleton {
     property int currentIndex: -1
     property string currentText: ""
     property bool loading: false
+    // Karaoke (per-word timing) state
+    property bool karaoke: false
+    // [{ start: number, text: string, words: [{ t: number, d: number, text: string }] }]
+    property var karaokeLines: []
     // Adaptive offset to re-synchronize lyrics with player position (ms)
     property int timeOffsetMs: 0
     // Last observed raw position to detect large seeks (ms)
@@ -40,24 +44,99 @@ Singleton {
     function _fetchLyrics() {
         available = false
         synced = false
+        karaoke = false
+        karaokeLines = []
         lines = []
         currentIndex = -1
         currentText = ""
         loading = true
         timeOffsetMs = 0
         _lastPosObservedMs = _posMs()
+        const track = (MprisController.activePlayer?.trackTitle || "").trim()
+        // Prefer combined artist string if available; fallback to joined array
+        const artistCombined = (MprisController.activePlayer?.trackArtist || "").trim()
+        const artistsArray = (MprisController.activePlayer?.trackArtists || [])
+        const artist = (artistCombined || artistsArray.join(', ')).trim()
+        if (!track || !artist) {
+            // Not enough metadata
+            loading = false
+            _setNoLyrics()
+            return
+        }
+        _providerIndex = 0
+        _currentProvider = ""
+        // Store raw strings; encoding is done when constructing provider URLs
+        _qTrack = track
+        _qArtist = artist
+        _pendingRequest = ""
+        _neteaseSongId = 0
+        _tryNextProvider()
+    }
 
-        const track = StringUtils.cleanMusicTitle(_player?.trackTitle) || ""
-        const artist = _player?.trackArtist || ""
-        const lengthSec = Math.round((_player?.length || 0) / 1000)
-        if (!track || !artist) return
+    // Helper: set fallback to a single "No lyrics" line
+    function _setNoLyrics() {
+        root.lines = [ { time: null, text: "No lyrics" } ]
+        root.synced = false
+        root.available = true
+        root.currentIndex = 0
+        root.currentText = "No lyrics"
+    }
 
-        const qTrack = encodeURIComponent(track).replace(/%20/g, "+")
-        const qArtist = encodeURIComponent(artist).replace(/%20/g, "+")
-        const url = `https://lrclib.net/api/get?track_name=${qTrack}&artist_name=${qArtist}`
+    // Provider state
+    property int _providerIndex: 0
+    property string _currentProvider: ""
+    property string _qTrack: ""
+    property string _qArtist: ""
+    // NetEase flow state
+    property string _pendingRequest: "" // "netease_search" | "netease_lyric" | ""
+    property int _neteaseSongId: 0
 
-        // Use curl via Process (consistent with other services like Weather)
-        fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 '${url}'`]
+    // Attempt providers in order (prioritize karaoke-capable):
+    // 0 = NetEase Cloud Music (klyric + lrc), 1 = LRCLib (synced only)
+    function _tryNextProvider() {
+        const wantLrclib = !!Config.options?.lyrics?.enableLrclib
+        const wantNetease = !!Config.options?.lyrics?.enableNetease
+        const providers = []
+        // Prefer karaoke-capable provider first
+        if (wantNetease) providers.push("netease")
+        if (wantLrclib) providers.push("lrclib")
+        if (providers.length === 0) {
+            loading = false
+            _setNoLyrics()
+            return
+        }
+        if (_providerIndex >= providers.length) {
+            loading = false
+            _setNoLyrics()
+            return
+        }
+        _currentProvider = providers[_providerIndex]
+        _providerIndex += 1
+
+        let url = ""
+        if (_currentProvider === "lrclib") {
+            // Docs: https://lrclib.net/docs (GET /api/get?track_name&artist_name)
+            const trackQ = encodeURIComponent(_qTrack).replace(/%20/g, '+')
+            const artistQ = encodeURIComponent(_qArtist).replace(/%20/g, '+')
+            console.log("LyricsService: LRCLIB query raw track=", _qTrack, "artist=", _qArtist, "encoded trackQ=", trackQ, "artistQ=", artistQ)
+            url = `https://lrclib.net/api/get?track_name=${trackQ}&artist_name=${artistQ}`
+        } else if (_currentProvider === "netease") {
+            // Docs: https://binaryify.github.io/NeteaseCloudMusicApi/#/?id=lyric
+            // Step 1: search by keywords to get song id
+            const base = Config.options?.lyrics?.neteaseBaseUrl || ""
+            if (!base) {
+                // No base URL configured, skip this provider
+                _tryNextProvider()
+                return
+            }
+            const keywords = encodeURIComponent(`${_qArtist} ${_qTrack}`).replace(/%20/g, '+')
+            console.log("LyricsService: NetEase search raw artist=", _qArtist, "track=", _qTrack, "keywords=", keywords)
+            url = `${base.replace(/\/$/, "")}/search?limit=1&type=1&keywords=${keywords}`
+            _pendingRequest = "netease_search"
+        }
+        console.log("LyricsService: fetching provider=", _currentProvider, "url=", url)
+        // Add HTTP code marker for all providers
+        fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 -w '\n%{http_code}\n' '${url}'`]
         fetchProc.running = true
     }
 
@@ -67,45 +146,137 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.loading = false
-                const raw = text || ""
-                if (raw.length === 0) {
-                    root.available = false
+                const all = text || ""
+                // Try to split out trailing HTTP status code added by curl -w
+                let httpStatus = 0
+                let raw = all
+                const m = all.match(/\n(\d{3})\s*$/)
+                if (m) {
+                    httpStatus = parseInt(m[1])
+                    raw = all.slice(0, all.length - m[0].length)
+                }
+                console.log("LyricsService: response provider=", root._currentProvider, "pending=", root._pendingRequest, "status=", httpStatus, "bytes=", raw.length)
+                if (httpStatus === 404) {
+                    // Try next provider on 404
+                    root._tryNextProvider()
                     return
                 }
-                try {
-                    const resp = JSON.parse(raw)
-                    const syncedText = resp?.syncedLyrics || ""
-                    const plainText = resp?.plainLyrics || ""
-                    if (syncedText && syncedText.length > 0) {
-                        root.lines = parseSynced(syncedText)
-                        root.synced = true
-                        root.available = root.lines.length > 0
-                    } else if (plainText && plainText.length > 0) {
-                        root.lines = plainToLines(plainText)
-                        root.synced = false
-                        root.available = root.lines.length > 0
-                    } else {
-                        root.available = false
-                    }
-                } catch (e) {
-                    // Fallback: sometimes the endpoint may return raw LRC/plain on errors
-                    const isLikelyLrc = /\n?\s*\[\d{1,2}:\d{1,2}(?:[\.:]\d{1,2})?\]/.test(raw)
-                    if (isLikelyLrc) {
-                        try {
-                            root.lines = parseSynced(raw)
+                if (raw.length === 0) {
+                    // Try next provider on empty
+                    root._tryNextProvider()
+                    return
+                }
+                if (root._currentProvider === "lrclib") {
+                    try {
+                        const resp = JSON.parse(raw)
+                        const syncedText = resp?.syncedLyrics || ""
+                        if (syncedText && syncedText.length > 0) {
+                            root.lines = parseSynced(syncedText)
                             root.synced = true
                             root.available = root.lines.length > 0
-                        } catch (_) {
-                            root.available = false
+                            root.karaoke = false
+                            root.karaokeLines = []
+                            console.log("LyricsService: LRCLIB parsed lines=", root.lines.length)
+                        } else {
+                            // Nothing useful, try next
+                            root._tryNextProvider()
+                            return
                         }
-                    } else if (raw.trim().length > 0 && raw.indexOf('{') === -1) {
-                        // Treat as plain text lyrics if it doesn't look like JSON
-                        root.lines = plainToLines(raw)
-                        root.synced = false
-                        root.available = root.lines.length > 0
+                    } catch (e) {
+                        // Fallback: sometimes the endpoint may return raw LRC/plain on errors
+                        const isLikelyLrc = /\n?\s*\[\d{1,2}:\d{1,2}(?:[\.:]\d{1,2})?\]/.test(raw)
+                        if (isLikelyLrc) {
+                            try {
+                                root.lines = parseSynced(raw)
+                                root.synced = true
+                                root.available = root.lines.length > 0
+                                root.karaoke = false
+                                root.karaokeLines = []
+                                console.log("LyricsService: LRCLIB fallback LRC lines=", root.lines.length)
+                            } catch (_) {
+                                root._tryNextProvider()
+                                return
+                            }
+                        } else {
+                            root._tryNextProvider()
+                            return
+                        }
+                    }
+                } else if (root._currentProvider === "netease") {
+                    const base = Config.options?.lyrics?.neteaseBaseUrl || ""
+                    if (!base) { root._tryNextProvider(); return }
+                    if (root._pendingRequest === "netease_search") {
+                        try {
+                            const resp = JSON.parse(raw)
+                            const song = resp?.result?.songs?.[0]
+                            const id = song?.id
+                            console.log("LyricsService: NetEase search songs=", resp?.result?.songs?.length || 0, "id=", id)
+                            if (!id) { root._tryNextProvider(); return }
+                            root._neteaseSongId = id
+                            const url2 = `${base.replace(/\/$/, "")}/lyric?id=${id}`
+                            root._pendingRequest = "netease_lyric"
+                            console.log("LyricsService: fetching NetEase lyric url=", url2)
+                            fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 -w '\n%{http_code}\n' '${url2}'`]
+                            fetchProc.running = true
+                            return
+                        } catch (e) {
+                            root._tryNextProvider();
+                            return
+                        }
+                    } else if (root._pendingRequest === "netease_lyric") {
+                        try {
+                            const resp = JSON.parse(raw)
+                            const klyric = resp?.klyric?.lyric || ""
+                            const lrc = resp?.lrc?.lyric || ""
+                            if (resp?.nolyric === true || resp?.uncollected === true) {
+                                console.log("LyricsService: NetEase reports no lyrics (nolyric/uncollected)")
+                                root._tryNextProvider();
+                                return
+                            }
+                            console.log("LyricsService: NetEase lyric lengths k=", (klyric||"").length, "lrc=", (lrc||"").length)
+                            if (klyric && klyric.length > 0) {
+                                const structured = parseKLyricStructured(klyric)
+                                if (structured.length > 0) {
+                                    root.karaokeLines = structured
+                                    // Derive line-synced entries from first word of each line
+                                    root.lines = structured
+                                        .filter(l => l.words && l.words.length > 0)
+                                        .map(l => ({ time: l.start, text: l.text }))
+                                    root.synced = true
+                                    root.karaoke = true
+                                    root.available = root.lines.length > 0
+                                    console.log("LyricsService: NetEase klyric parsed lines=", root.lines.length)
+                                } else if (lrc && /\[\d{1,2}:\d{1,2}/.test(lrc)) {
+                                    root.lines = parseSynced(lrc)
+                                    root.synced = true
+                                    root.karaoke = false
+                                    root.karaokeLines = []
+                                    root.available = root.lines.length > 0
+                                    console.log("LyricsService: NetEase LRC parsed lines=", root.lines.length)
+                                } else {
+                                    root._tryNextProvider();
+                                    return
+                                }
+                            } else if (lrc && /\[\d{1,2}:\d{1,2}/.test(lrc)) {
+                                root.lines = parseSynced(lrc)
+                                root.synced = true
+                                root.karaoke = false
+                                root.karaokeLines = []
+                                root.available = root.lines.length > 0
+                                console.log("LyricsService: NetEase LRC parsed lines=", root.lines.length)
+                            } else {
+                                root._tryNextProvider();
+                                return
+                            }
+                        } catch (e) {
+                            root._tryNextProvider();
+                            return
+                        } finally {
+                            root._pendingRequest = ""
+                        }
                     } else {
-                        console.error("[LyricsService] Parse error:", e.message)
-                        root.available = false
+                        root._tryNextProvider();
+                        return
                     }
                 }
                 // Update the currently displayed line immediately
@@ -114,18 +285,63 @@ Singleton {
         }
     }
 
+    // Parse NetEase klyric into structured karaoke lines
+    // Example segments inside a line: [mm:ss.xx]<start,dur,0>word<start2,dur2,0>next ...
+    function parseKLyricStructured(ktext) {
+        const out = []
+        const lines = ktext.split(/\r?\n/)
+        for (let line of lines) {
+            if (!line || !line.trim()) continue
+            let idx = 0
+            // Extract line timestamp [mm:ss.xx]
+            let startMs = 0
+            const m = line.match(/^\[(\d{1,2}):(\d{1,2})(?:[\.:](\d{1,3}))?]/)
+            if (m) {
+                const mm = parseInt(m[1])||0
+                const ss = parseInt(m[2])||0
+                const cs = m[3] ? parseInt(String(m[3]).slice(0,2)) : 0
+                startMs = mm*60000 + ss*1000 + cs*10
+                idx = m[0].length
+            }
+            const words = []
+            let plainText = ""
+            // Iterate tags like <start,dur,flag>text
+            const re = /<([\d]+),([\d]+),[\d]+>([^<]+)/g
+            let wm
+            while ((wm = re.exec(line.slice(idx))) !== null) {
+                const t = parseInt(wm[1])||0
+                const d = parseInt(wm[2])||0
+                const txt = (wm[3]||"")
+                words.push({ t: startMs + t, d: d, text: txt })
+                plainText += txt
+            }
+            if (words.length > 0) {
+                out.push({ start: words[0].t, text: plainText.trim(), words: words })
+            } else if (startMs > 0) {
+                // Fallback to line-level timing only
+                const rest = line.slice(idx).replace(/<[^>]*>/g, "").trim()
+                if (rest.length > 0) out.push({ start: startMs, text: rest, words: [] })
+            }
+        }
+        return out
+    }
+
     // Parse LRC format
     function parseSynced(lrc) {
         const out = []
-        const re = /^\s*\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,2}))?\]\s*(.*)$/
+        // Accept mm:ss.xx or mm:ss.xxx with . : or , as separators for subsecond
+        const re = /^\s*\[(\d{1,2}):(\d{1,2})(?:[\.:,](\d{1,3}))?\]\s*(.*)$/
         const lines = lrc.split(/\r?\n/)
         for (let i = 0; i < lines.length; i++) {
             const m = lines[i].match(re)
             if (m) {
                 const min = parseInt(m[1]) || 0
                 const sec = parseInt(m[2]) || 0
-                const cs = parseInt(m[3] || "0") || 0
-                const ms = min * 60000 + sec * 1000 + (cs * 10)
+                const fracStr = m[3] || "0"
+                const fracNum = parseInt(fracStr) || 0
+                // If 3 digits, treat as milliseconds; if 1-2 digits, treat as centiseconds
+                const subMs = (fracStr.length === 3) ? fracNum : (fracNum * 10)
+                const ms = min * 60000 + sec * 1000 + subMs
                 const txt = (m[4] || "").trim()
                 if (txt.length > 0) {
                     out.push({ time: ms, text: txt })
@@ -166,6 +382,16 @@ Singleton {
     // Position adjusted by adaptive offset
     function _effectivePosMs() {
         return _posMs() + (timeOffsetMs || 0)
+    }
+
+    // Public: expose effective position for UI (karaoke highlighting)
+    function effectivePosMs() { return _effectivePosMs() }
+
+    // Helper to get karaoke segments for current line
+    function karaokeSegmentsFor(index) {
+        const i = (typeof index === 'number') ? index : currentIndex
+        if (i < 0 || i >= karaokeLines.length) return []
+        return karaokeLines[i]?.words || []
     }
 
     function _lenMs() {
@@ -251,8 +477,9 @@ Singleton {
     Timer {
         running: true
         repeat: true
-        interval: 2000 // every 2s
+        interval: 1000 // every 1s for tighter tracking
         onTriggered: {
+            if (!_player?.isPlaying) return
             if (!root.available || !root.synced || root.lines.length === 0) return
             const pos = root._posMs()
             // Find the nearest timed line to current raw position
@@ -272,7 +499,7 @@ Singleton {
             const targetOffset = root.lines[bestIdx].time - pos
             // Smoothly move offset toward target; be a bit more aggressive on large error
             const errDelta = targetOffset - root.timeOffsetMs
-            const alpha = Math.abs(errDelta) > 1500 ? 0.3 : 0.12
+            const alpha = Math.abs(errDelta) > 1500 ? 0.3 : 0.15
             const newOffset = Math.round(root.timeOffsetMs + alpha * errDelta)
             // Clamp to reasonable bounds to avoid wild jumps
             root.timeOffsetMs = Math.max(-5000, Math.min(5000, newOffset))

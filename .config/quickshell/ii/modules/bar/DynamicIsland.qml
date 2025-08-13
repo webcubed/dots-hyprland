@@ -42,6 +42,11 @@ Item {
 	// Set true when current media title qualifies as "short" by character count
 	property bool shortTitleActive: false
 
+	// Keep animation timings consistent across width and content transitions
+	readonly property int resizeDuration: 400
+	// Longer, independent duration for lyric switching animation
+	readonly property int lyricsTransitionDuration: 400
+
 	// Shared layout metrics (keep in sync with RowLayout content)
 	// Used both by calculateContentWidth() and UI sizing to avoid drift
 	readonly property int outerPadding: 16                    // combined left+right
@@ -55,26 +60,21 @@ Item {
 
 	// Force recalculation when content changes
 	onMediaActiveChanged: {
-		console.log("Media active changed:", mediaActive)
 		updateWidth()
 	}
 	
 	onShowActiveWindowChanged: {
-		console.log("Show active window changed:", showActiveWindow)
 		updateWidth()
 	}
 	
 	// Function to update width using targetWidth property
 	function updateWidth() {
 		var newWidth = calculateContentWidth()
-		console.log("DYNAMIC ISLAND: Updating width from", targetWidth, "to:", newWidth)
-		console.log("DYNAMIC ISLAND: Media active:", mediaActive, "Show active window:", showActiveWindow)
 		targetWidth = newWidth
 	}
 	
 	// Initialize width on component creation
 	Component.onCompleted: {
-		console.log("DYNAMIC ISLAND: Component completed, initializing width")
 		updateWidth()
 	}
 	
@@ -82,13 +82,11 @@ Item {
 	Connections {
 		target: MprisController.activePlayer
 		function onTrackTitleChanged() {
-			console.log("MPRIS TITLE CHANGED:", MprisController.activePlayer?.trackTitle)
 			if (mediaActive) {
 				updateWidth()
 			}
 		}
 		function onTrackArtistChanged() {
-			console.log("MPRIS ARTIST CHANGED:", MprisController.activePlayer?.trackArtist)
 			if (mediaActive) {
 				updateWidth()
 			}
@@ -99,7 +97,6 @@ Item {
 	Connections {
 		target: root.activeWindow
 		function onTitleChanged() {
-			console.log("WINDOW TITLE CHANGED:", root.activeWindow?.title)
 			if (showActiveWindow) {
 				updateWidth()
 			}
@@ -110,7 +107,6 @@ Item {
 	Connections {
 		target: ToplevelManager
 		function onActiveToplevelChanged() {
-			console.log("ACTIVE TOPLEVEL CHANGED")
 			if (showActiveWindow) {
 				updateWidth()
 			}
@@ -119,8 +115,7 @@ Item {
 
 	// Calculate required width based on content
 	function calculateContentWidth() {
-		console.log("=== CALCULATING WIDTH ===")
-		console.log("mediaActive:", mediaActive, "showActiveWindow:", showActiveWindow)
+
 
 		// Use shared metrics so calc matches layout exactly
 		const outerPadding = dynamicIsland.outerPadding
@@ -159,7 +154,6 @@ Item {
 				: (hoveringTruncated ? desiredHover : desiredNormal)
 
 			const clamped = Math.max(minWidth, Math.min(desired, maxWidth))
-			console.log("Media desired width:", desired, "clamped:", clamped, "mode:", (GlobalStates.lyricsModeActive ? "lyrics" : "title"), "text measured:", textWidth, "fullWidthFits:", fullWidthFits, "hoveringTruncated:", hoveringTruncated)
 			return clamped
 		} else if (showActiveWindow) {
 			// Prefer baseline-measured title width (hidden measurer), then fallback to implicitWidth
@@ -171,11 +165,9 @@ Item {
 			// Active window needs less outer padding than media (controls/progress absent)
 			let desired = windowWidth + 12
 			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
-			console.log("Window desired width:", desired, "clamped:", clamped)
 			return clamped
 		}
 		dynamicIsland.shortTitleActive = false
-		console.log("Using base width:", baseWidth)
 		return baseWidth
 	}
 
@@ -197,21 +189,15 @@ Item {
 		command: ["cava", "-p", `${FileUtils.trimFileProtocol(Directories.scriptPath)}/cava/raw_output_config.txt`]
 		stdout: SplitParser {
 			onRead: data => {
-				console.log("DynamicIsland CAVA data received")
 				let points = data.split(";").map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
-				console.log("DynamicIsland: points length", points.length, "first few:", points.slice(0,5))
 				visualizerPoints = points;
 				if (typeof GlobalStates !== 'undefined') GlobalStates.visualizerPoints = points;
 			}
 		}
 	}
 
-	// Debug visualizer data connection
-	onVisualizerPointsChanged: {
-		if (visualizerPoints && visualizerPoints.length > 0) {
-			console.log("DynamicIsland: visualizerPoints updated, length:", visualizerPoints.length)
-		}
-	}
+	// Visualizer points updated; no verbose logging to avoid console noise
+	onVisualizerPointsChanged: {}
 
 	// Layout properties
 	// Let parent layouts position/size us; also set explicit width to drive animations reliably
@@ -409,74 +395,140 @@ Item {
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 							property string currentText: (GlobalStates.lyricsModeActive ? (LyricsService.available ? (LyricsService.currentText || "") : Translation.tr("Fetching lyrics...")) : "")
 							property string prevText: ""
-							onVisibleChanged: {
-								if (visible) {
-									// Ensure no residual scroll offset from title mode
-									titleScrollContainer.contentX = 0
-									titleScrollContainer.contentY = 0
-									if (dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
-								}
-							}
+                            // Drive karaoke highlight with an internal timer using effective position
+                            property int karaokeMs: 0
+                            Timer { id: karaokeTick; running: lyricsView.visible; repeat: true; interval: 60; onTriggered: lyricsView.karaokeMs = LyricsService.effectivePosMs() }
+                            onVisibleChanged: {
+                                if (visible) {
+                                    // Ensure no residual scroll offset from title mode
+                                    titleScrollContainer.contentX = 0
+                                    titleScrollContainer.contentY = 0
+                                    if (dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+                                }
+                            }
 
-							// Centered stack for lyric line switching
-							Item {
-								id: lyricStack
-								anchors.centerIn: parent
-								width: parent.width
-								height: Math.max(lyricNew.implicitHeight, lyricOld.implicitHeight)
+                            // Centered stack for lyric line switching
+                            Item {
+                                id: lyricStack
+                                anchors.centerIn: parent
+                                width: parent.width
+                                height: Math.max(
+                                    lyricNew.item ? lyricNew.item.implicitHeight : 0,
+                                    lyricOld.item ? lyricOld.item.implicitHeight : 0
+                                )
 
-								// Two-line switcher for slide animation
-								StyledText {
-									id: lyricOld
-									anchors.centerIn: parent
-									y: 0
-									opacity: 0
-									font.pixelSize: Appearance.font.pixelSize.small
-									color: Appearance.colors.colOnLayer1
-									text: lyricsView.prevText
-									elide: Text.ElideNone
-									horizontalAlignment: Text.AlignHCenter
-									width: lyricStack.width
-									onImplicitWidthChanged: { if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth) }
-								}
-								StyledText {
-									id: lyricNew
-									anchors.centerIn: parent
-									y: 0
-									opacity: 1
-									font.pixelSize: Appearance.font.pixelSize.small
-									color: Appearance.colors.colOnLayer1
-									text: lyricsView.currentText
-									elide: Text.ElideNone
-									horizontalAlignment: Text.AlignHCenter
-									width: lyricStack.width
-									onImplicitWidthChanged: { if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth) }
-								}
-							}
+                                // Two-line switcher for slide animation
+                                Loader {
+                                    id: lyricOld
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 0
+                                    opacity: 0
+                                    width: lyricStack.width
+                                    sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
+                                    onLoaded: {
+                                        if (LyricsService.karaoke) {
+                                            item.segments = LyricsService.karaokeSegmentsFor(Math.max(0, LyricsService.currentIndex - 1))
+                                            item.currentMs = lyricsView.karaokeMs
+                                            item.baseColor = Appearance.colors.colOnLayer1
+                                            item.highlightColor = Appearance.colors.colPrimary
+                                            item.pixelSize = Appearance.font.pixelSize.small
+                                            item.text = lyricsView.prevText
+                                        } else {
+                                            item.text = lyricsView.prevText
+                                            item.font.pixelSize = Appearance.font.pixelSize.small
+                                            item.color = Appearance.colors.colOnLayer1
+                                            item.horizontalAlignment = Text.AlignHCenter
+                                            item.width = lyricStack.width
+                                        }
+                                        if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+                                    }
+                                }
+                                Loader {
+                                    id: lyricNew
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 0
+                                    opacity: 1
+                                    width: lyricStack.width
+                                    sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
+                                    onLoaded: {
+                                        if (LyricsService.karaoke) {
+                                            item.segments = LyricsService.karaokeSegmentsFor(LyricsService.currentIndex)
+                                            item.currentMs = lyricsView.karaokeMs
+                                            item.baseColor = Appearance.colors.colOnLayer1
+                                            item.highlightColor = Appearance.colors.colPrimary
+                                            item.pixelSize = Appearance.font.pixelSize.small
+                                            item.text = lyricsView.currentText
+                                        } else {
+                                            item.text = lyricsView.currentText
+                                            item.font.pixelSize = Appearance.font.pixelSize.small
+                                            item.color = Appearance.colors.colOnLayer1
+                                            item.horizontalAlignment = Text.AlignHCenter
+                                            item.width = lyricStack.width
+                                        }
+                                        if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+                                    }
+                                }
 
-							onCurrentTextChanged: {
-								// Prepare animation: move new from top, push old down
-								lyricOld.text = lyricNew.text
-								lyricOld.y = 0
-								lyricOld.opacity = 1
-								lyricNew.text = lyricsView.currentText
-								lyricNew.y = -lyricNew.implicitHeight
-								lyricNew.opacity = 1
-								animGrp.start()
-								// Recalculate width per line
-								Qt.callLater(function(){ if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth() })
-							}
+                                // Components for text vs karaoke
+                                Component { id: textComp; StyledText {} }
+                                Component { id: karaokeComp; KaraokeLine {} }
 
-							SequentialAnimation {
-								id: animGrp
-								running: false
-								ParallelAnimation {
-									NumberAnimation { target: lyricOld; property: "y"; to: lyricOld.implicitHeight; duration: 220; easing.type: Easing.OutCubic }
-									NumberAnimation { target: lyricOld; property: "opacity"; to: 0; duration: 220; easing.type: Easing.OutCubic }
-									NumberAnimation { target: lyricNew; property: "y"; to: 0; duration: 220; easing.type: Easing.OutCubic }
-								}
-							}
-						}
+                                // Update visual when the current line changes
+                                function refresh() {
+                                    if (lyricOld.item) {
+                                        if (LyricsService.karaoke) {
+                                            lyricOld.item.text = lyricsView.prevText
+                                            lyricOld.item.segments = LyricsService.karaokeSegmentsFor(Math.max(0, LyricsService.currentIndex - 1))
+                                            lyricOld.item.currentMs = lyricsView.karaokeMs
+                                        } else {
+                                            lyricOld.item.text = lyricsView.prevText
+                                        }
+                                    }
+                                    if (lyricNew.item) {
+                                        if (LyricsService.karaoke) {
+                                            lyricNew.item.text = lyricsView.currentText
+                                            lyricNew.item.segments = LyricsService.karaokeSegmentsFor(LyricsService.currentIndex)
+                                            lyricNew.item.currentMs = lyricsView.karaokeMs
+                                        } else {
+                                            lyricNew.item.text = lyricsView.currentText
+                                        }
+                                    }
+                                }
+                            }
+
+                            onCurrentTextChanged: {
+                                // Prepare animation: move new from top (hidden), push old down
+                                lyricsView.prevText = lyricNew.item && (LyricsService.karaoke ? (LyricsService.karaokeLines[Math.max(0, LyricsService.currentIndex - 1)]?.text || lyricNew.item.text) : lyricNew.item.text) || ""
+                                lyricStack.refresh()
+                                lyricOld.y = 0
+                                lyricOld.opacity = 1
+                                // Defer until implicit sizes update to avoid popping
+                                Qt.callLater(function() {
+                                    lyricNew.y = -lyricStack.height
+                                    lyricNew.opacity = 0
+                                    animGrp.start()
+                                    if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+                                })
+                            }
+
+                            onKaraokeMsChanged: {
+                                if (LyricsService.karaoke) {
+                                    if (lyricNew.item) lyricNew.item.currentMs = lyricsView.karaokeMs
+                                    if (lyricOld.item) lyricOld.item.currentMs = lyricsView.karaokeMs
+                                }
+                            }
+
+                            SequentialAnimation {
+                                id: animGrp
+                                running: false
+                                ParallelAnimation {
+                                    NumberAnimation { target: lyricOld; property: "y"; to: (lyricOld.item ? lyricOld.item.implicitHeight : 0); duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { target: lyricOld; property: "opacity"; to: 0; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { target: lyricNew; property: "y"; to: 0; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { target: lyricNew; property: "opacity"; to: 1; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                }
+                            }
+                        }
 
 						// Media title view (fallback when lyrics not active)
 						Item {
