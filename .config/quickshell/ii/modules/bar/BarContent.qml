@@ -226,7 +226,7 @@ Item { // Bar content region
             } */
 			Loader {
             id: dynamicIslandLoader
-            anchors.centerIn: parent
+            // anchors.centerIn: parent
             // Do not show on lock screen (lock surface is transparent)
             active: !GlobalStates.screenLocked
             sourceComponent: DynamicIsland {}
@@ -239,7 +239,6 @@ Item { // Bar content region
                     if (pos && typeof pos.x === 'number') {
                         const winX = root.QsWindow?.window?.x ?? 0;
                         GlobalStates.dynamicIslandCenterX = winX + pos.x;
-                        console.log("[Bar] dynamicIslandCenterX updated:", pos.x)
                     }
                 } catch (e) { /* ignore */ }
             }

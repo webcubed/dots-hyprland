@@ -259,6 +259,8 @@ Singleton {
                 // Base URL for a self-hosted Netease Cloud Music API instance
                 // Example: "http://localhost:3000"
                 property string neteaseBaseUrl: ""
+                // Show debug notifications for active lyrics provider
+                property bool debugNotify: false
                 // Reserved for future synced provider (requires API key)
                 property JsonObject musixmatch: JsonObject {
                     property bool enable: false

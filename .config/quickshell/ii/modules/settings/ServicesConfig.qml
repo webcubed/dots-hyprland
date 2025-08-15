@@ -173,6 +173,15 @@ ContentPage {
                 }
             }
         }
+
+        ContentSubsection {
+            title: Translation.tr("Advanced")
+            ConfigSwitch {
+                text: Translation.tr("Show lyrics provider notifications (debug)")
+                checked: Config.options.lyrics.debugNotify
+                onCheckedChanged: Config.options.lyrics.debugNotify = checked
+            }
+        }
     }
 
     ContentSection {

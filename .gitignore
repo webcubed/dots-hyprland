@@ -9,3 +9,4 @@
 __pycache__/
 *.py[cod]
 .config/quickshell/ii/.qmlls.ini
+.config/quickshell/ii/services/mxm_headless_test.js

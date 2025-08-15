@@ -44,8 +44,8 @@ Item {
 
 	// Keep animation timings consistent across width and content transitions
 	readonly property int resizeDuration: 400
-	// Longer, independent duration for lyric switching animation
-	readonly property int lyricsTransitionDuration: 400
+	// Duration for lyric switching animation (slide + fade)
+	readonly property int lyricsTransitionDuration: 220
 
 	// Shared layout metrics (keep in sync with RowLayout content)
 	// Used both by calculateContentWidth() and UI sizing to avoid drift
@@ -395,10 +395,25 @@ Item {
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 							property string currentText: (GlobalStates.lyricsModeActive ? (LyricsService.available ? (LyricsService.currentText || "") : Translation.tr("Fetching lyrics...")) : "")
 							property string prevText: ""
+							property int __tickCount: 0
                             // Drive karaoke highlight with an internal timer using effective position
                             property int karaokeMs: 0
-                            Timer { id: karaokeTick; running: lyricsView.visible; repeat: true; interval: 60; onTriggered: lyricsView.karaokeMs = LyricsService.effectivePosMs() }
+                            property int __lastIdx: -1
+                            // Small lead to compensate for UI latency/perception
+                            property int karaokeLeadMs: 380
+                            // Minimum leading-gap duration for dots; applied to KaraokeLine.gapMinMs
+                            property int lyricsGapMinMs: 1200
+                            // Faster tick for smoother per-word progress
+                            Timer { id: karaokeTick; running: lyricsView.visible; repeat: true; interval: 33; onTriggered: lyricsView.karaokeMs = (LyricsService.effectivePosMs() + lyricsView.karaokeLeadMs) }
+                            // Continuously drive highlighting for both old/new items
+                            onKaraokeMsChanged: {
+                                if (LyricsService.karaoke) {
+                                    if (lyricOld.item) lyricOld.item.currentMs = karaokeMs
+                                    if (lyricNew.item) lyricNew.item.currentMs = karaokeMs
+                                }
+                            }
                             onVisibleChanged: {
+                                console.log("DynamicIsland: lyricsView visible=", visible, "lyricsMode=", GlobalStates.lyricsModeActive, "timerActive=", dynamicIsland.timerActive)
                                 if (visible) {
                                     // Ensure no residual scroll offset from title mode
                                     titleScrollContainer.contentX = 0
@@ -421,18 +436,53 @@ Item {
                                 Loader {
                                     id: lyricOld
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    y: 0
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.verticalCenterOffset: 0
                                     opacity: 0
+                                    z: 1
                                     width: lyricStack.width
                                     sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
                                     onLoaded: {
+                                        console.log("DynamicIsland: lyricOld loaded comp=", (LyricsService.karaoke ? "karaoke" : "text"), "karaoke=", LyricsService.karaoke)
+                                        // Enforce correct component (avoid flicker by only changing when needed)
+                                        const targetOld = LyricsService.karaoke ? karaokeComp : textComp
+                                        if (lyricOld.sourceComponent !== targetOld) lyricOld.sourceComponent = targetOld
+                                        // Explicit No-lyrics fallback
+                                        if (!LyricsService.available || !(LyricsService.lines && LyricsService.lines.length > 0)) {
+                                            if (lyricOld.item) {
+                                                lyricOld.item.text = qsTr("No lyrics")
+                                                lyricOld.item.font.pixelSize = Appearance.font.pixelSize.small
+                                                lyricOld.item.color = Appearance.colors.colOnLayer1
+                                                lyricOld.item.horizontalAlignment = Text.AlignHCenter
+                                                lyricOld.item.width = lyricStack.width
+                                            }
+                                            return
+                                        }
                                         if (LyricsService.karaoke) {
-                                            item.segments = LyricsService.karaokeSegmentsFor(Math.max(0, LyricsService.currentIndex - 1))
-                                            item.currentMs = lyricsView.karaokeMs
+                                            const idx = Math.max(0, LyricsService.currentIndex)
+                                            // For the very first line, keep lyricOld empty so it doesn't block leading dots
+                                            if (idx === 0) {
+                                                item.segments = []
+                                                item.text = ""
+                                                if (item.hasOwnProperty('suppressLeadingGap')) item.suppressLeadingGap = true
+                                                item.baseStartMs = 0
+                                                item.nextStartMs = 3600000
+                                            } else {
+                                                item.segments = LyricsService.karaokeSegmentsFor(idx - 1)
+                                                item.baseStartMs = (LyricsService.karaokeLines[idx - 1]?.start || 0)
+                                                item.nextStartMs = (LyricsService.karaokeLines[idx]?.start !== undefined) ? LyricsService.karaokeLines[idx].start : (item.baseStartMs + 3600000)
+                                                // Dots removed: no suppressLeadingGap
+                                                item.text = (LyricsService.karaokeLines[idx - 1]?.text || lyricsView.prevText)
+                                            }
+                                            // Bind currentMs so it follows karaokeMs continuously
+                                            try { item.currentMs = Qt.binding(function(){ return lyricsView.karaokeMs }) } catch(e) { item.currentMs = lyricsView.karaokeMs }
+                                            item.timesRelative = true
                                             item.baseColor = Appearance.colors.colOnLayer1
-                                            item.highlightColor = Appearance.colors.colPrimary
+                                            item.highlightColor = "#FFFFFF"
                                             item.pixelSize = Appearance.font.pixelSize.small
-                                            item.text = lyricsView.prevText
+                                            item.baseOpacity = 0.25
+                                            item.overlayOpacity = 1.0
+                                            if (item.hasOwnProperty('gapMinMs')) item.gapMinMs = dynamicIsland.lyricsGapMinMs
                                         } else {
                                             item.text = lyricsView.prevText
                                             item.font.pixelSize = Appearance.font.pixelSize.small
@@ -440,24 +490,60 @@ Item {
                                             item.horizontalAlignment = Text.AlignHCenter
                                             item.width = lyricStack.width
                                         }
+                                        console.log("DynamicIsland: lyricOld onLoaded prevText.len=", (lyricsView.prevText||"").length,
+                                                    "segments.len=", (LyricsService.karaoke ? (item.segments||[]).length : 0),
+                                                    "currentMs=", (LyricsService.karaoke ? item.currentMs : -1))
                                         if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
                                     }
                                 }
                                 Loader {
                                     id: lyricNew
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    y: 0
-                                    opacity: 1
+                                    // Vertically centered; use offset for slide-in
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    // Start off-screen above to avoid pre-flash
+                                    anchors.verticalCenterOffset: -(lyricNew.item ? lyricNew.item.implicitHeight : lyricStack.height)
+                                    opacity: 0
+                                    visible: false
+                                    z: 2
                                     width: lyricStack.width
                                     sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
                                     onLoaded: {
+                                        console.log("DynamicIsland: lyricNew loaded comp=", (LyricsService.karaoke ? "karaoke" : "text"), "karaoke=", LyricsService.karaoke)
+                                        // Enforce correct component (avoid flicker by only changing when needed)
+                                        const targetNew = LyricsService.karaoke ? karaokeComp : textComp
+                                        if (lyricNew.sourceComponent !== targetNew) lyricNew.sourceComponent = targetNew
+                                        // Explicit No-lyrics fallback
+                                        if (!LyricsService.available) {
+                                            if (lyricNew.item) {
+                                                lyricNew.item.text = qsTr("No lyrics")
+                                                lyricNew.item.font.pixelSize = Appearance.font.pixelSize.small
+                                                lyricNew.item.color = Appearance.colors.colOnLayer1
+                                                lyricNew.item.horizontalAlignment = Text.AlignHCenter
+                                                lyricNew.item.width = lyricStack.width
+                                            }
+                                            return
+                                        }
                                         if (LyricsService.karaoke) {
-                                            item.segments = LyricsService.karaokeSegmentsFor(LyricsService.currentIndex)
-                                            item.currentMs = lyricsView.karaokeMs
+                                            const idx = Math.max(0, LyricsService.currentIndex)
+                                            item.segments = LyricsService.karaokeSegmentsFor(idx)
+                                            // Bind currentMs so it follows karaokeMs continuously
+                                            try { item.currentMs = Qt.binding(function(){ return lyricsView.karaokeMs }) } catch(e) { item.currentMs = lyricsView.karaokeMs }
+                                            item.timesRelative = true
+                                            item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
+                                            // Next start: if there is a next line, use it; else push far in future
+                                            item.nextStartMs = (LyricsService.karaokeLines[idx + 1]?.start !== undefined) ? LyricsService.karaokeLines[idx + 1].start : (item.baseStartMs + 3600000)
                                             item.baseColor = Appearance.colors.colOnLayer1
-                                            item.highlightColor = Appearance.colors.colPrimary
+                                            item.highlightColor = "#FFFFFF"
                                             item.pixelSize = Appearance.font.pixelSize.small
-                                            item.text = lyricsView.currentText
+                                            item.baseOpacity = 0.25
+                                            item.overlayOpacity = 1.0
+                                            item.text = (LyricsService.karaokeLines[idx]?.text || lyricsView.currentText)
+                                            // Dots removed: normal transition with no special first-line gap handling
+                                            // Keep hidden until animation kicks in to prevent pre-flash
+                                            lyricNew.visible = false
+                                            lyricNew.opacity = 0
+                                            if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
                                         } else {
                                             item.text = lyricsView.currentText
                                             item.font.pixelSize = Appearance.font.pixelSize.small
@@ -465,6 +551,10 @@ Item {
                                             item.horizontalAlignment = Text.AlignHCenter
                                             item.width = lyricStack.width
                                         }
+                                        console.log("DynamicIsland: lyricNew onLoaded currText.len=", (lyricsView.currentText||"").length,
+                                                    "segments.len=", (LyricsService.karaoke ? (item.segments||[]).length : 0),
+                                                    "currentMs=", (LyricsService.karaoke ? item.currentMs : -1),
+                                                    "currentIndex=", LyricsService.currentIndex)
                                         if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
                                     }
                                 }
@@ -475,57 +565,159 @@ Item {
 
                                 // Update visual when the current line changes
                                 function refresh() {
+                                    console.log("DynamicIsland: lyricStack.refresh karaoke=", LyricsService.karaoke, "idx=", LyricsService.currentIndex)
+                                    const idx = Math.max(0, LyricsService.currentIndex)
+                                    // For first line, keep lyricNew visible/centered to allow leading dots before first word
+                                    if (LyricsService.karaoke && idx === 0) {
+                                        lyricNew.visible = true
+                                        lyricNew.opacity = 1
+                                        lyricNew.anchors.verticalCenterOffset = 0
+                                        lyricOld.opacity = 0
+                                    } else {
+                                        // Keep new line hidden and positioned above until animation starts to prevent pre-flash
+                                        lyricNew.visible = LyricsService.karaoke ? false : lyricNew.visible
+                                        lyricNew.opacity = 0
+                                        if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
+                                    }
+                                    // Enforce correct component each refresh (only if changed)
+                                    const targetOld2 = LyricsService.karaoke ? karaokeComp : textComp
+                                    const targetNew2 = LyricsService.karaoke ? karaokeComp : textComp
+                                    if (lyricOld.sourceComponent !== targetOld2) lyricOld.sourceComponent = targetOld2
+                                    if (lyricNew.sourceComponent !== targetNew2) lyricNew.sourceComponent = targetNew2
+                                    if (!LyricsService.available || !(LyricsService.lines && LyricsService.lines.length > 0)) {
+                                        // Explicit no-lyrics: use text component for both and clear karaoke specifics
+                                        lyricOld.sourceComponent = textComp
+                                        lyricNew.sourceComponent = textComp
+                                        if (lyricOld.item) {
+                                            lyricOld.item.text = qsTr("No lyrics")
+                                            lyricOld.item.font.pixelSize = Appearance.font.pixelSize.small
+                                            lyricOld.item.color = Appearance.colors.colOnLayer1
+                                            lyricOld.item.horizontalAlignment = Text.AlignHCenter
+                                            lyricOld.item.width = lyricStack.width
+                                        }
+                                        if (lyricNew.item) {
+                                            lyricNew.item.text = qsTr("No lyrics")
+                                            lyricNew.item.font.pixelSize = Appearance.font.pixelSize.small
+                                            lyricNew.item.color = Appearance.colors.colOnLayer1
+                                            lyricNew.item.horizontalAlignment = Text.AlignHCenter
+                                            lyricNew.item.width = lyricStack.width
+                                        }
+                                        return
+                                    }
                                     if (lyricOld.item) {
                                         if (LyricsService.karaoke) {
+                                            const segsOld = LyricsService.karaokeSegmentsFor(Math.max(0, idx - 1)) || []
+                                            // Always provide text so KaraokeLine can fallback
                                             lyricOld.item.text = lyricsView.prevText
-                                            lyricOld.item.segments = LyricsService.karaokeSegmentsFor(Math.max(0, LyricsService.currentIndex - 1))
-                                            lyricOld.item.currentMs = lyricsView.karaokeMs
+                                            if (segsOld.length > 0) {
+                                                lyricOld.item.segments = segsOld
+                                                lyricOld.item.currentMs = lyricsView.karaokeMs
+                                                lyricOld.item.timesRelative = true
+                                                lyricOld.item.baseStartMs = (LyricsService.karaokeLines[Math.max(0, idx - 1)]?.start || 0)
+                                                lyricOld.item.nextStartMs = (LyricsService.karaokeLines[idx]?.start || lyricOld.item.baseStartMs)
+                                            } else {
+                                                // Keep KaraokeLine and let it render plain text fallback
+                                                lyricOld.item.segments = []
+                                                lyricOld.item.currentMs = lyricsView.karaokeMs
+                                                lyricOld.item.timesRelative = false
+                                                lyricOld.item.baseStartMs = (LyricsService.karaokeLines[Math.max(0, idx - 1)]?.start || 0)
+                                                lyricOld.item.nextStartMs = (LyricsService.karaokeLines[idx]?.start || lyricOld.item.baseStartMs)
+                                            }
                                         } else {
                                             lyricOld.item.text = lyricsView.prevText
                                         }
                                     }
                                     if (lyricNew.item) {
                                         if (LyricsService.karaoke) {
+                                            const segsNew = LyricsService.karaokeSegmentsFor(idx) || []
+                                            // Always provide text so KaraokeLine can fallback
                                             lyricNew.item.text = lyricsView.currentText
-                                            lyricNew.item.segments = LyricsService.karaokeSegmentsFor(LyricsService.currentIndex)
-                                            lyricNew.item.currentMs = lyricsView.karaokeMs
+                                            if (segsNew.length > 0) {
+                                                lyricNew.item.segments = segsNew
+                                                lyricNew.item.currentMs = lyricsView.karaokeMs
+                                                lyricNew.item.timesRelative = true
+                                                lyricNew.item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
+                                                lyricNew.item.nextStartMs = (LyricsService.karaokeLines[Math.min(LyricsService.karaokeLines.length - 1, idx + 1)]?.start || lyricNew.item.baseStartMs)
+                                                if (lyricNew.item.hasOwnProperty('suppressLeadingGap')) lyricNew.item.suppressLeadingGap = (idx > 0)
+                                            } else {
+                                                // Keep KaraokeLine and let it render plain text fallback
+                                                lyricNew.item.segments = []
+                                                lyricNew.item.currentMs = lyricsView.karaokeMs
+                                                lyricNew.item.timesRelative = false
+                                                lyricNew.item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
+                                                lyricNew.item.nextStartMs = (LyricsService.karaokeLines[Math.min(LyricsService.karaokeLines.length - 1, idx + 1)]?.start || lyricNew.item.baseStartMs)
+                                                if (lyricNew.item.hasOwnProperty('suppressLeadingGap')) lyricNew.item.suppressLeadingGap = (idx > 0)
+                                            }
                                         } else {
                                             lyricNew.item.text = lyricsView.currentText
                                         }
                                     }
+                                    if (lyricNew.item) console.log("DynamicIsland: lyricNew after refresh text.len=", (lyricNew.item.text||"").length, "segments.len=", (lyricNew.item.segments||[]).length)
+                                    if (lyricOld.item) console.log("DynamicIsland: lyricOld after refresh text.len=", (lyricOld.item.text||"").length, "segments.len=", (lyricOld.item.segments||[]).length)
+                                }
+
+                                // Determine karaoke line index from current time
+                                function idxForMs(ms) {
+                                    const arr = LyricsService.karaokeLines || []
+                                    if (!arr.length) return Math.max(0, LyricsService.currentIndex)
+                                    for (let i = 0; i < arr.length; i++) {
+                                        const s = arr[i]?.start || 0
+                                        const n = arr[i+1]?.start
+                                        if (ms < s) return Math.max(0, i - 1)
+                                        if (n === undefined || ms < n) return i
+                                    }
+                                    return arr.length - 1
                                 }
                             }
 
                             onCurrentTextChanged: {
+                                console.log("DynamicIsland: onCurrentTextChanged karaoke=", LyricsService.karaoke, "idx=", LyricsService.currentIndex,
+                                            "curr.len=", (lyricsView.currentText||"").length, "prev.len=", (lyricsView.prevText||"").length)
                                 // Prepare animation: move new from top (hidden), push old down
                                 lyricsView.prevText = lyricNew.item && (LyricsService.karaoke ? (LyricsService.karaokeLines[Math.max(0, LyricsService.currentIndex - 1)]?.text || lyricNew.item.text) : lyricNew.item.text) || ""
-                                lyricStack.refresh()
-                                lyricOld.y = 0
+                                // Ensure new is hidden and off-screen BEFORE refresh to avoid a flash
+                                lyricNew.opacity = 0
+                                lyricNew.anchors.verticalCenterOffset = -(lyricNew.item ? lyricNew.item.implicitHeight : lyricStack.height)
+                                lyricOld.anchors.verticalCenterOffset = 0
                                 lyricOld.opacity = 1
-                                // Defer until implicit sizes update to avoid popping
+                                // Refresh content, then animate in the new line
+                                lyricStack.refresh()
                                 Qt.callLater(function() {
-                                    lyricNew.y = -lyricStack.height
+                                    // Position new just above using its final height and reveal right before animation
+                                    if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
+                                    lyricNew.visible = LyricsService.karaoke ? false : true // in karaoke, show only when anim starts
                                     lyricNew.opacity = 0
                                     animGrp.start()
                                     if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth()
                                 })
                             }
 
-                            onKaraokeMsChanged: {
-                                if (LyricsService.karaoke) {
-                                    if (lyricNew.item) lyricNew.item.currentMs = lyricsView.karaokeMs
-                                    if (lyricOld.item) lyricOld.item.currentMs = lyricsView.karaokeMs
-                                }
-                            }
+                            /* onKaraokeMsChanged: {
+                                __tickCount++
+                                if (lyricNew.item && LyricsService.karaoke) lyricNew.item.currentMs = karaokeMs
+                                if (lyricOld.item && LyricsService.karaoke) lyricOld.item.currentMs = karaokeMs
+                                if ((__tickCount % 15) === 0) console.log("DynamicIsland: karaokeMs=", karaokeMs)
+                            } */
 
                             SequentialAnimation {
                                 id: animGrp
                                 running: false
+                                onStarted: {
+                                    // Reveal the new line only at animation start (karaoke mode)
+                                    if (LyricsService.karaoke) {
+                                        lyricNew.visible = true
+                                    }
+                                }
                                 ParallelAnimation {
-                                    NumberAnimation { target: lyricOld; property: "y"; to: (lyricOld.item ? lyricOld.item.implicitHeight : 0); duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { target: lyricOld.anchors; property: "verticalCenterOffset"; to: (lyricOld.item ? (lyricOld.item.implicitHeight) : lyricStack.height); duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
                                     NumberAnimation { target: lyricOld; property: "opacity"; to: 0; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
-                                    NumberAnimation { target: lyricNew; property: "y"; to: 0; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                    NumberAnimation { target: lyricNew.anchors; property: "verticalCenterOffset"; to: 0; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
                                     NumberAnimation { target: lyricNew; property: "opacity"; to: 1; duration: dynamicIsland.lyricsTransitionDuration; easing.type: Easing.InOutQuad }
+                                }
+                                onStopped: {
+                                    // Ensure old is hidden and reset after animation completes
+                                    lyricOld.opacity = 0
+                                    lyricOld.anchors.verticalCenterOffset = 0
                                 }
                             }
                         }
