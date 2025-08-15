@@ -49,6 +49,22 @@ Singleton {
         }
     }
 
+    // Config helpers: allow users to toggle Musixmatch karaoke (richsync) vs regular (subtitles/plain)
+    function _mxmEnableRich() {
+        const mm = Config.options?.lyrics?.musixmatch || {}
+        if (mm.enableRichsync !== undefined) return !!mm.enableRichsync
+        if (mm.richsyncEnable !== undefined) return !!mm.richsyncEnable
+        if (mm.enable !== undefined) return !!mm.enable // backwards compat
+        return true
+    }
+    function _mxmEnableRegular() {
+        const mm = Config.options?.lyrics?.musixmatch || {}
+        if (mm.enableRegular !== undefined) return !!mm.enableRegular
+        if (mm.enablePlain !== undefined) return !!mm.enablePlain
+        if (mm.enable !== undefined) return !!mm.enable // backwards compat
+        return true
+    }
+
     // Query providers
     function _fetchLyrics() {
         // Read metadata first; do NOT clear existing lyrics if metadata incomplete
@@ -102,6 +118,10 @@ Singleton {
     // Musixmatch flow state
     // "musixmatch_macro" | "musixmatch_richsync" | "musixmatch_fallback_lrc" | "musixmatch_lyrics"
     property int _musixmatchTrackId: 0
+    // Bounded retry to recover when matcher.lyrics is empty but karaoke may exist via matcher.track
+    property int _mxmRetryCount: 0
+    // Track if Musixmatch has been attempted this cycle, to avoid repeated upgrade attempts
+    property bool _musixmatchTried: false
 
     // Attempt providers in order (prioritize karaoke-capable):
     // 0 = NetEase Cloud Music (klyric + lrc), 1 = Musixmatch (synced LRC or plain or karaoke), 2 = LRCLib (synced only)
@@ -113,16 +133,28 @@ Singleton {
         }
         // If we already have lyrics, do not advance to other providers
         if (root.available && root.lines && root.lines.length > 0) {
-            root.loading = false
-            return
+            const wantMxm = (_mxmEnableRich() || _mxmEnableRegular())
+            // Allow an upgrade attempt to Musixmatch karaoke if we only have non-karaoke lyrics so far
+            if (!root.karaoke && wantMxm && _mxmEnableRich() && !root._musixmatchTried) {
+                root._musixmatchTried = true
+                _providerIndex = 0
+                _currentProvider = "musixmatch"
+                _pendingRequest = ""
+                console.log("LyricsService: upgrading to Musixmatch karaoke attempt")
+                _fetchLyrics()
+                return
+            } else {
+                root.loading = false
+                return
+            }
         }
         const wantLrclib = !!Config.options?.lyrics?.enableLrclib
-        const wantNetease = !!Config.options?.lyrics?.enableNetease
-        const wantMxm = !!Config.options?.lyrics?.musixmatch?.enable
+        const wantNetease = !!Config.options?.lyrics?.netease?.enable
+        const wantMxm = (_mxmEnableRich() || _mxmEnableRegular())
         const providers = []
         // Prefer karaoke-capable provider first
-        if (wantNetease) providers.push("netease")
         if (wantMxm) providers.push("musixmatch")
+        if (wantNetease) providers.push("netease")
         if (wantLrclib) providers.push("lrclib")
         if (providers.length === 0) {
             // No providers enabled; do not overwrite existing lyrics
@@ -162,16 +194,34 @@ Singleton {
             url = `${base.replace(/\/$/, "")}/search?limit=1&type=1&keywords=${keywords}`
             _pendingRequest = "netease_search"
         } else if (_currentProvider === "musixmatch") {
-            // Fetch karaoke richsync first:
-            // Step 1: resolve commontrack_id via matcher.track.get
+            const wantRich = _mxmEnableRich()
+            const wantRegular = _mxmEnableRegular()
+            // If neither mode is enabled, skip
+            if (!wantRich && !wantRegular) { _tryNextProvider(); return }
+            // Fetch karaoke richsync first when enabled, otherwise go straight to regular (subtitle/plain)
             const key = Config.options?.lyrics?.musixmatch?.apiKey || ""
             if (!key) { _tryNextProvider(); return }
+            // reset per-track retry counter
+            _mxmRetryCount = 0
             _musixmatchTrackId = 0
             const base = "https://apic-desktop.musixmatch.com/ws/1.1"
             const trackQ = encodeURIComponent(_qTrack)
             const artistQ = encodeURIComponent(_qArtist)
-            url = `${base}/matcher.track.get?format=json&app_id=web-desktop-app-v1.0&q_artist=${artistQ}&q_track=${trackQ}&usertoken=${encodeURIComponent(key)}`
-            _pendingRequest = "musixmatch_matcher"
+            if (wantRich) {
+                // Karaoke path via macro to prefer richsync/subtitles in one request
+                url = `${base}/macro.subtitles.get?format=json&subtitle_format=mxm&app_id=web-desktop-app-v1.0&q_track=${trackQ}&q_artist=${artistQ}&usertoken=${encodeURIComponent(key)}`
+                _pendingRequest = "musixmatch_macro"
+            } else {
+                // Regular only: try direct subtitle first, then plain lyrics
+                const _ua2 = Config.options?.networking?.userAgent || ""
+                const _uaHeader2 = _ua2 ? `-H 'User-Agent: ${_ua2.replace(/'/g, "'\\''")}'` : ""
+                const urlSub = `${base}/matcher.subtitle.get?format=json&subtitle_format=mxm&app_id=web-desktop-app-v1.0&q_artist=${artistQ}&q_track=${trackQ}&usertoken=${encodeURIComponent(key)}`
+                _pendingRequest = "musixmatch_matcher_subtitle"
+                console.log("LyricsService: Musixmatch regular-only; trying matcher.subtitle.get")
+                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_uaHeader2} -w '\n%{http_code}\n' '${urlSub}'`]
+                fetchProc.running = true
+                return
+            }
         }
         console.log("LyricsService: fetching provider=", _currentProvider, "url=", url)
         // Optional debug notification
@@ -483,19 +533,29 @@ Singleton {
                                 root._pendingRequest = ""
                                 console.log("LyricsService: Musixmatch plain lyrics lines=", root.lines.length)
                             } else {
-                                // Try resolving commontrack_id via matcher.track.get, then fetch richsync
-                                const base2 = "https://apic-desktop.musixmatch.com/ws/1.1"
-                                const trackQ2 = encodeURIComponent(root._qTrack)
-                                const artistQ2 = encodeURIComponent(root._qArtist)
-                                const url2 = `${base2}/matcher.track.get?format=json&app_id=web-desktop-app-v1.0&q_artist=${artistQ2}&q_track=${trackQ2}&usertoken=${encodeURIComponent(key)}`
-                                root._pendingRequest = "musixmatch_matcher"
-                                const _ua2 = Config.options?.networking?.userAgent || ""
-                                const _uaHeader2 = _ua2 ? `-H 'User-Agent: ${_ua2.replace(/'/g, "'\\''")}'` : ""
-                                const _mxmHeaders = `${_uaHeader2} -H 'Accept: */*' -H 'Accept-Language: en' -H 'Content-Type: application/json' -H 'Origin: https://xpui.app.spotify.com' -H 'Referer: https://xpui.app.spotify.com/' -H 'Cookie: AWSELB=unknown'`
-                                console.log("LyricsService: Musixmatch matcher.track.get after empty matcher.lyrics")
-                                fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_mxmHeaders} -w '\n%{http_code}\n' '${url2}'`]
-                                fetchProc.running = true
-                                return
+                                // Nothing from matcher.lyrics.
+                                // Allow a single bounded retry back to matcher.track.get (to recover transient misses),
+                                // then advance to the next provider to avoid loops.
+                                if (root._mxmRetryCount < 1) {
+                                    root._mxmRetryCount++
+                                    const base2 = "https://apic-desktop.musixmatch.com/ws/1.1"
+                                    const trackQ2 = encodeURIComponent(root._qTrack)
+                                    const artistQ2 = encodeURIComponent(root._qArtist)
+                                    const url2 = `${base2}/matcher.track.get?format=json&app_id=web-desktop-app-v1.0&q_artist=${artistQ2}&q_track=${trackQ2}&usertoken=${encodeURIComponent(key)}`
+                                    root._pendingRequest = "musixmatch_matcher"
+                                    const _ua2 = Config.options?.networking?.userAgent || ""
+                                    const _uaHeader2 = _ua2 ? `-H 'User-Agent: ${_ua2.replace(/'/g, "'\\''")}'` : ""
+                                    const _mxmHeaders = `${_uaHeader2} -H 'Accept: */*' -H 'Accept-Language: en' -H 'Content-Type: application/json' -H 'Origin: https://xpui.app.spotify.com' -H 'Referer: https://xpui.app.spotify.com/' -H 'Cookie: AWSELB=unknown'`
+                                    console.log("LyricsService: Musixmatch lyrics empty; retrying matcher.track.get once")
+                                    fetchProc.command = ["bash", "-c", `curl -sSL --max-time 5 ${_mxmHeaders} -w '\n%{http_code}\n' '${url2}'`]
+                                    fetchProc.running = true
+                                    return
+                                } else {
+                                    root._pendingRequest = ""
+                                    console.log("LyricsService: Musixmatch lyrics empty after retry; advancing to next provider")
+                                    root._tryNextProvider()
+                                    return
+                                }
                             }
                         } else if (root._pendingRequest === "musixmatch_matcher_subtitle") {
                             // Parse subtitles from matcher.subtitle.get

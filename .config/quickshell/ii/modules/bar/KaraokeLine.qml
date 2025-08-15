@@ -17,12 +17,12 @@ Item {
     property int leadingGapAbsStartMs: -1
     property int leadingGapAbsEndMs: -1
     // If segments' t are relative to the line start, set timesRelative=true and provide baseStartMs
-    property bool timesRelative: true
+    property bool timesRelative: false
     property int baseStartMs: 0
     // Next line start (for gap spanning when no tokens exist)
     property int nextStartMs: 0
     property color baseColor: Appearance.colors.colOnLayer1
-    property color highlightColor: "#FFFFFF"
+    property color highlightColor: "#8AADF4"
     property int pixelSize: Appearance.font.pixelSize.small
     // Tunables for visibility
     property real baseOpacity: 0.35
@@ -32,30 +32,15 @@ Item {
     property int activeWordIdx: -1
     // 0..1 progress through the active segment time window
     property real activeProgress: 0.0
+    // No visual delay or adaptive bias; follow player time strictly
     // Removed all gap/dots state (dots disabled)
     // Monotonic time within a line to avoid jitter/back jumps
     property int _lastMs: -1
 
-    onSegmentsChanged: { _normalizeSegments(); _lastMs = -1; root._recalcActive() }
-    // Dots animation displayed during silent gaps (no active words)
-    // Dots removed
-
-    // Plain text fallback when no segments are available
-    StyledText {
-        id: fallbackText
-        visible: (_normSegments && _normSegments.length === 0 && String(root.text||"").length > 0)
-        anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
-        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-        text: root.text
-        font.pixelSize: root.pixelSize
-        color: root.baseColor
-        opacity: root.overlayOpacity
-        horizontalAlignment: Text.AlignHCenter
-        z: 1
-    }
+    onSegmentsChanged: { _normalizeSegments(); _lastMs = -1 }
     onCurrentMsChanged: root._recalcActive()
-    onBaseStartMsChanged: { _lastMs = -1; root._recalcActive() }
-    onTimesRelativeChanged: root._recalcActive()
+    onBaseStartMsChanged: { _normalizeSegments(); _lastMs = -1 }
+    onTimesRelativeChanged: { _lastMs = -1; root._recalcActive() }
     onTextChanged: { _lastMs = -1 }
 
     // Let containers query our implicit size like a normal Text
@@ -113,7 +98,7 @@ Item {
             if (!out[j]) continue
             if (!out[j].d || out[j].d <= 0) {
                 const next = out[j+1]
-                out[j].d = Math.max(1, (next ? (next.t - out[j].t) : 300))
+                out[j].d = Math.max(80, (next ? (next.t - out[j].t) : 300)) // ensure a visible window
             }
         }
         // Renumber indices to match sorted order so delegate 'i' aligns with activeWordIdx
@@ -134,7 +119,7 @@ Item {
         let ms = msRaw
         if (_lastMs >= 0 && ms < _lastMs) ms = _lastMs
         _lastMs = ms
-        // Clamp monotonically within [lineStart, lineEnd]
+        // Clamp within [lineStart, lineEnd]
         const lineStart = timesRelative ? 0 : baseStartMs
         const lineEnd = (nextStartMs > 0) ? (timesRelative ? Math.max(0, nextStartMs - baseStartMs) : nextStartMs) : Number.MAX_SAFE_INTEGER
         ms = Math.min(Math.max(lineStart, ms), lineEnd)
@@ -149,19 +134,33 @@ Item {
         for (let k = 0; k < words.length; k++) {
             const i = words[k]
             const s = _normSegments[i]
-            const t0 = s.t || 0
+            const relT0 = s.t || 0
             const d0 = Math.max(1, s.d || 1)
             const next = (k + 1 < words.length) ? _normSegments[words[k+1]] : null
-            const nextT = next ? (next.t || (t0 + d0)) : (t0 + d0)
+            const relNextT = next ? (next.t || (relT0 + d0)) : (relT0 + d0)
+            // Compare in the same domain as ms
+            const t0 = timesRelative ? relT0 : (baseStartMs + relT0)
+            const nextT = timesRelative ? relNextT : (baseStartMs + relNextT)
             if (ms < t0) { chosen = (k > 0 ? words[k-1] : words[0]); chosenK = Math.max(0, k - 1); break }
             if (ms >= t0 && ms < nextT) { chosen = i; chosenK = k; break }
             chosen = i; chosenK = k
         }
+        // Prevent skipping multiple tokens in one UI tick unless this was a large jump (seek)
+        const last = _lastMs
+        const moderateStep = (last >= 0) ? (ms - last) <= 400 : false
+        if (moderateStep && activeWordIdx >= 0) {
+            // Clamp to at most +1 word from previous
+            let prevK = 0
+            for (let k = 0; k < words.length; k++) { if (words[k] === activeWordIdx) { prevK = k; break } }
+            if (chosenK > prevK + 1) { chosenK = prevK + 1; chosen = words[chosenK] }
+        }
         const cs = _normSegments[chosen]
-        const ct0 = cs ? (cs.t || 0) : 0
+        const relCt0 = cs ? (cs.t || 0) : 0
         const cd = Math.max(1, cs ? (cs.d || 1) : 1)
+        const ct0 = timesRelative ? relCt0 : (baseStartMs + relCt0)
         const nextWord = (chosenK + 1 < words.length) ? _normSegments[words[chosenK + 1]] : null
-        const nextStart = nextWord ? (nextWord.t || (ct0 + cd)) : (ct0 + cd)
+        const relNextStart = nextWord ? (nextWord.t || (relCt0 + cd)) : (relCt0 + cd)
+        const nextStart = timesRelative ? relNextStart : (baseStartMs + relNextStart)
         // No gap handling
         // Not in gap: highlight chosen word
         activeIdx = chosen

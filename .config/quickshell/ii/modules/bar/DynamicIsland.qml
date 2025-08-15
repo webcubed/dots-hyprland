@@ -400,11 +400,20 @@ Item {
                             property int karaokeMs: 0
                             property int __lastIdx: -1
                             // Small lead to compensate for UI latency/perception
-                            property int karaokeLeadMs: 380
+                            property int karaokeLeadMs: 0
                             // Minimum leading-gap duration for dots; applied to KaraokeLine.gapMinMs
-                            property int lyricsGapMinMs: 1200
+                            property int lyricsGapMinMs: 0
                             // Faster tick for smoother per-word progress
-                            Timer { id: karaokeTick; running: lyricsView.visible; repeat: true; interval: 33; onTriggered: lyricsView.karaokeMs = (LyricsService.effectivePosMs() + lyricsView.karaokeLeadMs) }
+                            Timer {
+                                id: karaokeTick
+                                running: (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive)
+                                repeat: true
+                                interval: 16 // ~60 FPS for smoother highlighting
+                                onTriggered: {
+                                    // Use raw effective playback position (ms) as the sole driver
+                                    lyricsView.karaokeMs = LyricsService.effectivePosMs()
+                                }
+                            }
                             // Continuously drive highlighting for both old/new items
                             onKaraokeMsChanged: {
                                 if (LyricsService.karaoke) {
@@ -458,7 +467,8 @@ Item {
                                             }
                                             return
                                         }
-                                        if (LyricsService.karaoke) {
+                                        const hasKaraoke = (LyricsService.karaoke && LyricsService.karaokeLines && LyricsService.karaokeLines.length > 0)
+                                        if (hasKaraoke) {
                                             const idx = Math.max(0, LyricsService.currentIndex)
                                             // For the very first line, keep lyricOld empty so it doesn't block leading dots
                                             if (idx === 0) {
@@ -474,15 +484,20 @@ Item {
                                                 // Dots removed: no suppressLeadingGap
                                                 item.text = (LyricsService.karaokeLines[idx - 1]?.text || lyricsView.prevText)
                                             }
-                                            // Bind currentMs so it follows karaokeMs continuously
-                                            try { item.currentMs = Qt.binding(function(){ return lyricsView.karaokeMs }) } catch(e) { item.currentMs = lyricsView.karaokeMs }
-                                            item.timesRelative = true
+                                            // Configure timing first to reset monotonic state before first ms hit
+                                            item.timesRelative = false
+                                            item.baseStartMs = (LyricsService.karaokeLines[idx - 1]?.start || 0)
+                                            item.nextStartMs = (LyricsService.karaokeLines[idx]?.start !== undefined) ? LyricsService.karaokeLines[idx].start : (item.baseStartMs + 3600000)
+                                            // Provide segments and visuals
+                                            item.segments = LyricsService.karaokeSegmentsFor(idx - 1)
                                             item.baseColor = Appearance.colors.colOnLayer1
-                                            item.highlightColor = "#FFFFFF"
+                                            item.highlightColor = "#8aadf4"
                                             item.pixelSize = Appearance.font.pixelSize.small
                                             item.baseOpacity = 0.25
                                             item.overlayOpacity = 1.0
                                             if (item.hasOwnProperty('gapMinMs')) item.gapMinMs = dynamicIsland.lyricsGapMinMs
+                                            // Bind currentMs so it follows karaokeMs continuously (after base/segments set)
+                                            try { item.currentMs = Qt.binding(function(){ return lyricsView.karaokeMs }) } catch(e) { item.currentMs = lyricsView.karaokeMs }
                                         } else {
                                             item.text = lyricsView.prevText
                                             item.font.pixelSize = Appearance.font.pixelSize.small
@@ -513,8 +528,9 @@ Item {
                                         // Enforce correct component (avoid flicker by only changing when needed)
                                         const targetNew = LyricsService.karaoke ? karaokeComp : textComp
                                         if (lyricNew.sourceComponent !== targetNew) lyricNew.sourceComponent = targetNew
-                                        // Explicit No-lyrics fallback
-                                        if (!LyricsService.available) {
+                                        // Only show explicit "No lyrics" when service resolved to that state
+                                        const explicitNoLyrics = (LyricsService.available && LyricsService.lines && LyricsService.lines.length > 0 && LyricsService.lines[0]?.text === "No lyrics")
+                                        if (explicitNoLyrics) {
                                             if (lyricNew.item) {
                                                 lyricNew.item.text = qsTr("No lyrics")
                                                 lyricNew.item.font.pixelSize = Appearance.font.pixelSize.small
@@ -529,19 +545,19 @@ Item {
                                             item.segments = LyricsService.karaokeSegmentsFor(idx)
                                             // Bind currentMs so it follows karaokeMs continuously
                                             try { item.currentMs = Qt.binding(function(){ return lyricsView.karaokeMs }) } catch(e) { item.currentMs = lyricsView.karaokeMs }
-                                            item.timesRelative = true
+                                            item.timesRelative = false
                                             item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
                                             // Next start: if there is a next line, use it; else push far in future
                                             item.nextStartMs = (LyricsService.karaokeLines[idx + 1]?.start !== undefined) ? LyricsService.karaokeLines[idx + 1].start : (item.baseStartMs + 3600000)
                                             item.baseColor = Appearance.colors.colOnLayer1
-                                            item.highlightColor = "#FFFFFF"
+                                            item.highlightColor = "#8aadf4"
                                             item.pixelSize = Appearance.font.pixelSize.small
                                             item.baseOpacity = 0.25
                                             item.overlayOpacity = 1.0
                                             item.text = (LyricsService.karaokeLines[idx]?.text || lyricsView.currentText)
                                             // Dots removed: normal transition with no special first-line gap handling
-                                            // Keep hidden until animation kicks in to prevent pre-flash
-                                            lyricNew.visible = false
+                                            // Keep visible to avoid missing early lines
+                                            lyricNew.visible = true
                                             lyricNew.opacity = 0
                                             if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
                                         } else {
@@ -574,8 +590,8 @@ Item {
                                         lyricNew.anchors.verticalCenterOffset = 0
                                         lyricOld.opacity = 0
                                     } else {
-                                        // Keep new line hidden and positioned above until animation starts to prevent pre-flash
-                                        lyricNew.visible = LyricsService.karaoke ? false : lyricNew.visible
+                                        // Keep new line positioned above; remain visible in karaoke to avoid missing lines
+                                        lyricNew.visible = LyricsService.karaoke ? true : lyricNew.visible
                                         lyricNew.opacity = 0
                                         if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
                                     }
@@ -584,8 +600,10 @@ Item {
                                     const targetNew2 = LyricsService.karaoke ? karaokeComp : textComp
                                     if (lyricOld.sourceComponent !== targetOld2) lyricOld.sourceComponent = targetOld2
                                     if (lyricNew.sourceComponent !== targetNew2) lyricNew.sourceComponent = targetNew2
-                                    if (!LyricsService.available || !(LyricsService.lines && LyricsService.lines.length > 0)) {
-                                        // Explicit no-lyrics: use text component for both and clear karaoke specifics
+                                    // If lyrics are still loading/unavailable, keep current visuals (avoid flashing "No lyrics")
+                                    const explicitNoLyrics2 = (LyricsService.available && LyricsService.lines && LyricsService.lines.length > 0 && LyricsService.lines[0]?.text === "No lyrics")
+                                    if (explicitNoLyrics2) {
+                                        // Show explicit no-lyrics once resolved
                                         lyricOld.sourceComponent = textComp
                                         lyricNew.sourceComponent = textComp
                                         if (lyricOld.item) {
@@ -605,16 +623,17 @@ Item {
                                         return
                                     }
                                     if (lyricOld.item) {
-                                        if (LyricsService.karaoke) {
+                                        const hasKaraokeOld = (LyricsService.karaoke && LyricsService.karaokeLines && LyricsService.karaokeLines.length > 0)
+                                        if (hasKaraokeOld) {
                                             const segsOld = LyricsService.karaokeSegmentsFor(Math.max(0, idx - 1)) || []
                                             // Always provide text so KaraokeLine can fallback
                                             lyricOld.item.text = lyricsView.prevText
                                             if (segsOld.length > 0) {
-                                                lyricOld.item.segments = segsOld
-                                                lyricOld.item.currentMs = lyricsView.karaokeMs
-                                                lyricOld.item.timesRelative = true
                                                 lyricOld.item.baseStartMs = (LyricsService.karaokeLines[Math.max(0, idx - 1)]?.start || 0)
                                                 lyricOld.item.nextStartMs = (LyricsService.karaokeLines[idx]?.start || lyricOld.item.baseStartMs)
+                                                lyricOld.item.timesRelative = false
+                                                lyricOld.item.segments = segsOld
+                                                lyricOld.item.currentMs = lyricsView.karaokeMs
                                             } else {
                                                 // Keep KaraokeLine and let it render plain text fallback
                                                 lyricOld.item.segments = []
@@ -628,25 +647,26 @@ Item {
                                         }
                                     }
                                     if (lyricNew.item) {
-                                        if (LyricsService.karaoke) {
+                                        const hasKaraokeNew = (LyricsService.karaoke && LyricsService.karaokeLines && LyricsService.karaokeLines.length > 0)
+                                        if (hasKaraokeNew) {
                                             const segsNew = LyricsService.karaokeSegmentsFor(idx) || []
                                             // Always provide text so KaraokeLine can fallback
                                             lyricNew.item.text = lyricsView.currentText
                                             if (segsNew.length > 0) {
-                                                lyricNew.item.segments = segsNew
-                                                lyricNew.item.currentMs = lyricsView.karaokeMs
-                                                lyricNew.item.timesRelative = true
                                                 lyricNew.item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
                                                 lyricNew.item.nextStartMs = (LyricsService.karaokeLines[Math.min(LyricsService.karaokeLines.length - 1, idx + 1)]?.start || lyricNew.item.baseStartMs)
+                                                lyricNew.item.timesRelative = false
+                                                lyricNew.item.segments = segsNew
+                                                lyricNew.item.currentMs = lyricsView.karaokeMs
                                                 if (lyricNew.item.hasOwnProperty('suppressLeadingGap')) lyricNew.item.suppressLeadingGap = (idx > 0)
                                             } else {
                                                 // Keep KaraokeLine and let it render plain text fallback
                                                 lyricNew.item.segments = []
                                                 lyricNew.item.currentMs = lyricsView.karaokeMs
                                                 lyricNew.item.timesRelative = false
-                                                lyricNew.item.baseStartMs = (LyricsService.karaokeLines[idx]?.start || 0)
-                                                lyricNew.item.nextStartMs = (LyricsService.karaokeLines[Math.min(LyricsService.karaokeLines.length - 1, idx + 1)]?.start || lyricNew.item.baseStartMs)
-                                                if (lyricNew.item.hasOwnProperty('suppressLeadingGap')) lyricNew.item.suppressLeadingGap = (idx > 0)
+                                                lyricNew.item.baseStartMs = 0
+                                                lyricNew.item.nextStartMs = 3600000
+                                                lyricNew.item.currentMs = lyricsView.karaokeMs
                                             }
                                         } else {
                                             lyricNew.item.text = lyricsView.currentText
@@ -685,7 +705,8 @@ Item {
                                 Qt.callLater(function() {
                                     // Position new just above using its final height and reveal right before animation
                                     if (lyricNew.item) lyricNew.anchors.verticalCenterOffset = -lyricNew.item.implicitHeight
-                                    lyricNew.visible = LyricsService.karaoke ? false : true // in karaoke, show only when anim starts
+                                    // Keep visible even in karaoke to avoid missing early lines
+                                    lyricNew.visible = true
                                     lyricNew.opacity = 0
                                     animGrp.start()
                                     if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth()

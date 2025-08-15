@@ -156,8 +156,8 @@ ContentPage {
 
         // Optional provider requiring API key (not enabled by default)
         ContentSubsection {
-            title: Translation.tr("Musixmatch (planned)")
-            tooltip: Translation.tr("Musixmatch synced timings require API access; not enabled by default.")
+            title: Translation.tr("Musixmatch")
+            tooltip: Translation.tr("Musixmatch supports karaoke (richsync) and regular (subtitles/plain). Requires API access.")
             ConfigRow {
                 uniform: true
                 ConfigSwitch {
@@ -170,6 +170,19 @@ ContentPage {
                     placeholderText: Translation.tr("Musixmatch API key")
                     text: Config.options.lyrics.musixmatch.apiKey
                     onTextChanged: Config.options.lyrics.musixmatch.apiKey = text
+                }
+            }
+            ConfigRow {
+                uniform: true
+                ConfigSwitch {
+                    text: Translation.tr("Enable karaoke (richsync)")
+                    checked: Config.options.lyrics.musixmatch.enableRichsync
+                    onCheckedChanged: Config.options.lyrics.musixmatch.enableRichsync = checked
+                }
+                ConfigSwitch {
+                    text: Translation.tr("Enable regular (subtitles/plain)")
+                    checked: Config.options.lyrics.musixmatch.enableRegular
+                    onCheckedChanged: Config.options.lyrics.musixmatch.enableRegular = checked
                 }
             }
         }

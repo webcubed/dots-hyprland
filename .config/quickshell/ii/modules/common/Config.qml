@@ -263,7 +263,12 @@ Singleton {
                 property bool debugNotify: false
                 // Reserved for future synced provider (requires API key)
                 property JsonObject musixmatch: JsonObject {
+                    // Master toggle to use Musixmatch provider at all
                     property bool enable: false
+                    // Fine-grained toggles: karaoke (richsync) vs regular (subtitles/plain)
+                    // Defaults keep both modes enabled when provider is enabled
+                    property bool enableRichsync: true
+                    property bool enableRegular: true
                     property string apiKey: ""
                 }
             }
