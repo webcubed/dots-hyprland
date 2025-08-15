@@ -374,7 +374,6 @@ Item {
 							GlobalStates.mediaControlsOpen = !GlobalStates.mediaControlsOpen;
 						}
 					}
-
 					// Content area: shows media title or lyrics based on flag
 					Flickable {
 						id: titleScrollContainer
@@ -383,7 +382,7 @@ Item {
 						clip: true
 						interactive: false
 						boundsBehavior: Flickable.StopAtBounds
-						contentWidth: GlobalStates.lyricsModeActive ? width : mediaTitle.implicitWidth
+						contentWidth: GlobalStates.lyricsModeActive ? width : (titleContainer.titleHovered ? mediaTitle.implicitWidth : width)
 						contentHeight: GlobalStates.lyricsModeActive ? height : Math.max(mediaTitle.implicitHeight, height)
 
 						// Lyrics view
@@ -758,12 +757,12 @@ Item {
 								x: 0
 								y: Math.floor((titleScrollContainer.height - implicitHeight) / 2)
 								// Use full implicit width so Flickable can scroll the hidden part
-								width: implicitWidth
+								width: titleContainer.titleHovered ? implicitWidth : titleScrollContainer.width
 								text: `${StringUtils.cleanMusicTitle(MprisController.activePlayer?.trackTitle) || Translation.tr("No media")}${MprisController.activePlayer?.trackArtist ? " - " + MprisController.activePlayer.trackArtist : ""}`
 								font.pixelSize: Appearance.font.pixelSize.small
 								color: Appearance.colors.colOnLayer1
 								// No elide; clipping and Flickable manage visibility
-								elide: Text.ElideNone
+								elide: titleContainer.titleHovered ? Text.ElideNone : Text.ElideRight
 								// Amount to scroll when overflowing
 								property real overflow: Math.max(0, titleScrollContainer.contentWidth - titleScrollContainer.width)
 								// Marquee animation: scroll via Flickable contentX

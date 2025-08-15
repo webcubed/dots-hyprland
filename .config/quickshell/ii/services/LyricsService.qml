@@ -31,6 +31,8 @@ Singleton {
     // Internal
     property string _lastKey: ""
     readonly property MprisPlayer _player: MprisController.activePlayer
+    // Track if any provider explicitly says there are no lyrics (successful response, empty/no-lyrics)
+    property bool _explicitNoLyrics: false
 
     // Build a cache key for current track (use title+artist only to avoid churn as length updates)
     function _trackKey() {
@@ -86,6 +88,7 @@ Singleton {
         currentIndex = -1
         currentText = ""
         loading = true
+        _explicitNoLyrics = false
         timeOffsetMs = 0
         _lastPosObservedMs = _posMs()
         _providerIndex = 0
@@ -164,10 +167,13 @@ Singleton {
             return
         }
         if (_providerIndex >= providers.length) {
-            // Providers exhausted. Do not force "No lyrics"; keep UI in non-available state
-            // to avoid flicker and false negatives on transient errors.
+            // Providers exhausted. Only show explicit "No lyrics" if a provider definitively said so.
             loading = false
-            available = (root.lines && root.lines.length > 0)
+            if (root._explicitNoLyrics) {
+                _setNoLyrics()
+            } else {
+                available = (root.lines && root.lines.length > 0)
+            }
             return
         }
         _currentProvider = providers[_providerIndex]
@@ -274,6 +280,7 @@ Singleton {
                             root.karaokeLines = []
                             console.log("LyricsService: LRCLIB parsed lines=", root.lines.length)
                         } else {
+                            root._explicitNoLyrics = true
                             // Nothing useful, try next
                             root._tryNextProvider()
                             return
@@ -328,6 +335,7 @@ Singleton {
                             const lrc = resp?.lrc?.lyric || ""
                             if (resp?.nolyric === true || resp?.uncollected === true) {
                                 console.log("LyricsService: NetEase reports no lyrics (nolyric/uncollected)")
+                                root._explicitNoLyrics = true
                                 root._tryNextProvider();
                                 return
                             }
@@ -552,6 +560,8 @@ Singleton {
                                     return
                                 } else {
                                     root._pendingRequest = ""
+                                    // Explicitly empty from Musixmatch after successful responses => treat as no lyrics
+                                    root._explicitNoLyrics = true
                                     console.log("LyricsService: Musixmatch lyrics empty after retry; advancing to next provider")
                                     root._tryNextProvider()
                                     return
