@@ -50,6 +50,31 @@ Item { // Bar content region
         border.color: Appearance.colors.colLayer0Border
     }
 
+    // Detect drags in the top-middle region to highlight Dynamic Island
+    // Middle 40% horizontally, full bar height (top region of screen)
+    DropArea {
+        id: islandHighlightDropArea
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: undefined
+        anchors.right: undefined
+        x: Math.round((parent.width - width) / 2)
+        width: Math.round(parent.width * 0.4)
+        height: parent.height
+        z: 50
+        onEntered: { GlobalStates.islandDropHighlight = true }
+        onExited: { GlobalStates.islandDropHighlight = false }
+        onDropped: (event) => {
+            try {
+                // Store here as a fallback in case this DropArea captures the event
+                ClipboardService.storeFromDrop(event)
+                GlobalStates.islandDropHighlight = false
+                event.acceptProposedAction()
+            } catch (e) {
+                console.log("BarContent highlight drop error:", e)
+            }
+        }
+    }
+
     MouseArea { // Left side | scroll to change brightness
         id: barLeftSideMouseArea
         anchors.left: parent.left

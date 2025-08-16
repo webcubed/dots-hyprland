@@ -48,7 +48,7 @@ MouseArea {
 
     required property LockContext context
     property bool active: false
-    property bool showInputField: active || context.currentText.length > 0
+    property bool showInputField: true
 
     function forceFieldFocus() {
         passwordBox.forceActiveFocus();
@@ -113,7 +113,7 @@ MouseArea {
             animation: Appearance.animation.elementMove.numberAnimation.createObject(this)
         }
         radius: Appearance.rounding.full
-        color: Appearance.m3colors.m3surfaceContainer
+        color: "#24273a"
         implicitWidth: 160
         implicitHeight: 44
 

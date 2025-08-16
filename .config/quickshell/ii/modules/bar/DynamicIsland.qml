@@ -17,6 +17,12 @@ import qs.modules.common.functions
 Item {
 	id: dynamicIsland
 
+	// Temporary clipboard drop/preview state
+	property bool dropActive: false
+	property bool dropSuccessFlash: false
+	// Overlay label shown during drag-over; set in onEntered/onExited
+	property string dropOverlayText: Translation.tr("Store in Dynamic Island")
+
 	// Helper function to format seconds into HH:MM:SS
 	function formatSeconds(seconds) {
 		var hours = Math.floor(seconds / 3600);
@@ -57,6 +63,74 @@ Item {
 	// Titles at or below this pixel width should display fully without overflow
 	readonly property int shortTitlePxThreshold: 240
 
+	    // Sticky hover latch + toggle semantics for clipboard preview
+    property bool clipboardPreviewLatched: false
+    property bool clipboardPreviewActiveOverride: false
+    // Explicit toggle: first hover enables preview persistently; second hover disables it
+    property bool clipboardPreviewToggled: false
+    // Debounce successive hover toggles and allow immediate second hover
+    property int clipboardToggleCooldownMs: resizeDuration
+    property double _clipboardLastToggleMs: 0
+    readonly property bool rawClipboardHover: (
+        (typeof hoverArea !== 'undefined' && hoverArea.containsMouse) ||
+        (typeof clipHover !== 'undefined' && clipHover.containsMouse) ||
+        (typeof previewLoader !== 'undefined' && previewLoader.item && previewLoader.item.popupHover && previewLoader.item.popupHover.containsMouse)
+    )
+    // Hover active: either toggled ON, or explicitly allowed via override (toggled OFF suppresses raw hover)
+    readonly property bool clipboardHoverActive: clipboardPreviewToggled || clipboardPreviewActiveOverride
+    // Track drag state to avoid unlatching during drag
+    readonly property bool clipboardDragActive: (
+        (typeof clipboardIconRect !== 'undefined' && clipboardIconRect.Drag && clipboardIconRect.Drag.active) ||
+        (typeof clipboardPreviewOverlay !== 'undefined' && clipboardPreviewOverlay.Drag && clipboardPreviewOverlay.Drag.active)
+    )
+
+    // Helper: toggle clipboard preview immediately with cooldown
+    function triggerClipboardToggle() {
+        const now = Date.now()
+        if (now - _clipboardLastToggleMs < clipboardToggleCooldownMs)
+            return
+        _clipboardLastToggleMs = now
+        clipboardPreviewToggled = !clipboardPreviewToggled
+        if (clipboardPreviewToggled) {
+            clipboardPreviewLatched = true
+            clipboardPreviewActiveOverride = true
+            // If the pointer stays put through the resize animation, auto-reset to avoid getting stuck
+            clipboardStayReset.restart()
+        } else {
+            clipboardPreviewLatched = false
+            clipboardPreviewActiveOverride = false
+            clipboardStayReset.stop()
+        }
+        Qt.callLater(updateWidth)
+    }
+
+    Timer {
+        id: clipboardHoverGrace
+        interval: 220
+        repeat: false
+        onTriggered: {
+            if (!dynamicIsland.rawClipboardHover && !dynamicIsland.clipboardDragActive && !dynamicIsland.clipboardPreviewToggled) {
+                dynamicIsland.clipboardPreviewActiveOverride = false
+                dynamicIsland.clipboardPreviewLatched = false
+                Qt.callLater(dynamicIsland.updateWidth)
+            }
+        }
+    }
+
+    // Auto-reset if the pointer stays in place throughout the animation while toggled on
+    Timer {
+        id: clipboardStayReset
+        interval: dynamicIsland.resizeDuration + 40
+        repeat: false
+        onTriggered: {
+            if (dynamicIsland.clipboardPreviewToggled && dynamicIsland.rawClipboardHover) {
+                dynamicIsland.clipboardPreviewToggled = false
+                dynamicIsland.clipboardPreviewActiveOverride = false
+                dynamicIsland.clipboardPreviewLatched = false
+                Qt.callLater(dynamicIsland.updateWidth)
+            }
+        }
+    }
 
 	// Force recalculation when content changes
 	onMediaActiveChanged: {
@@ -77,6 +151,195 @@ Item {
 	Component.onCompleted: {
 		updateWidth()
 	}
+	
+	// Highlight overlay when bar-level detector says we're in top-middle region
+	Connections {
+		target: GlobalStates
+		function onIslandDropHighlightChanged() {
+			if (GlobalStates.islandDropHighlight) {
+				dynamicIsland.dropOverlayText = Translation.tr("Store in Dynamic Island")
+				dynamicIsland.dropActive = true
+			} else if (!dynamicIsland.dropSuccessFlash) {
+				dynamicIsland.dropActive = false
+			}
+		}
+	}
+
+	// Hidden measurer for clipboard inline text width
+    Text {
+        id: clipboardTextMeasure
+        visible: false
+        text: ClipboardService.kind === "text" ? ClipboardService.text : ""
+        wrapMode: Text.NoWrap
+        font.pixelSize: Appearance.fontSizes.small
+        font.family: Appearance.fontFamily
+    }
+
+    // Inline Clipboard Text overrides other content when present
+    Item {
+        id: clipboardPreviewOverlay
+        // Show inline clipboard text while hovering or when preview is latched/overridden
+        visible: ClipboardService.kind === "text" && (dynamicIsland.clipboardHoverActive || dynamicIsland.clipboardPreviewLatched || dynamicIsland.clipboardPreviewActiveOverride)
+        opacity: visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.InOutQuad } }
+        // Keep overlay above media but below the clipboard icon (icon z: 401)
+        z: 350
+        anchors.fill: parent // ensure overlay covers the whole island
+        clip: true
+        // Keep some space on the left for the clipboard icon area.
+        // Use a fixed, safe gutter to avoid any timing issues with layout: icon is 18px, slot ~22px, spacing 8px
+        //  => 22 + 8 + extra padding = 48
+        property int leftReserve: 48
+        anchors.leftMargin: leftReserve
+
+        // Enable dragging out by dragging on the preview overlay
+        Drag.supportedActions: Qt.CopyAction
+        Drag.proposedAction: Qt.CopyAction
+        Drag.hotSpot.x: width / 2
+        Drag.hotSpot.y: height / 2
+        Drag.onActiveChanged: {
+            console.log("clipboardPreviewOverlay Drag active:", Drag.active)
+            if (Drag.active) {
+                // Build drag data and force a drag image from the current overlay appearance
+                ClipboardService.buildDragData(clipboardPreviewOverlay)
+                clipboardPreviewOverlay.grabToImage(function(result) {
+                    if (result && result.url && Drag.active) {
+                        clipboardPreviewOverlay.Drag.imageSource = result.url
+                    }
+                })
+            } else {
+                ClipboardService.clear()
+            }
+        }
+
+        // Reliable activation: prepare drag payload and image BEFORE turning Drag.active on
+        DragHandler {
+            id: overlayDragHandler
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+            target: null
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+            onActiveChanged: {
+                if (active) {
+                    // Prepare data and image first
+                    ClipboardService.buildDragData(clipboardPreviewOverlay)
+                    // If no image yet (e.g., text/urls), ensure we have some image before activation
+                    if (clipboardPreviewOverlay.Drag.imageSource === undefined
+                        || clipboardPreviewOverlay.Drag.imageSource === null) {
+                        // Provide a tiny inline SVG as a guaranteed default; service also sets one for text/urls
+                        clipboardPreviewOverlay.Drag.imageSource = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' rx='2' ry='2' fill='%23303446'/%3E%3C/svg%3E"
+                    }
+                    // Start the drag immediately (do not wait for snapshot callbacks)
+                    clipboardPreviewOverlay.Drag.active = true
+                    // Best-effort: update image to a snapshot of the overlay once available
+                    clipboardPreviewOverlay.grabToImage(function(result) {
+                        if (result && result.url && clipboardPreviewOverlay.Drag.active) {
+                            clipboardPreviewOverlay.Drag.imageSource = result.url
+                        }
+                    })
+                } else {
+                    console.log("overlay DragHandler became inactive")
+                }
+            }
+        }
+
+        // Background that sits in front of original content
+        Rectangle {
+            anchors.fill: parent
+            radius: Appearance.rounding.full
+            color: Appearance.colors.colLayer2
+            opacity: 1.0
+        }
+
+        // Centered text row
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 4
+            anchors.rightMargin: 8
+            anchors.topMargin: 8
+            anchors.bottomMargin: 8
+            spacing: 6
+            Item { Layout.fillWidth: true; Layout.fillHeight: true }
+            Item {
+                Layout.fillHeight: true
+                Layout.preferredWidth: parent ? parent.width - 16 : 0
+                StyledText {
+                    id: clipboardInlineText
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    text: ClipboardService.text
+                    wrapMode: Text.NoWrap
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colOnLayer1
+                }
+            }
+            Item { Layout.fillWidth: true; Layout.fillHeight: true }
+        }
+
+        // Allow hover grace but do not steal drag/click from the clipboard icon
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            preventStealing: true
+            propagateComposedEvents: true
+            onEntered: { clipboardHoverGrace.stop() }
+            onExited: { clipboardHoverGrace.start() }
+        }
+
+        // Drag handler to start drag when user drags on the preview
+        DragHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+            target: null
+            grabPermissions: PointerHandler.CanTakeOverFromAnything
+            onActiveChanged: {
+                if (active) {
+                    // Latch preview so it doesn't disappear mid-gesture
+                    dynamicIsland.clipboardPreviewLatched = true
+                    ClipboardService.buildDragData(clipboardPreviewOverlay)
+                    clipboardPreviewOverlay.Drag.active = true
+                } else {
+                    console.log("overlay DragHandler became inactive")
+                }
+            }
+        }
+
+        // Also support long-press to begin drag without movement
+        TapHandler {
+            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+            // Optional: tweak threshold if needed
+            // longPressThreshold: 350
+            onLongPressed: {
+                dynamicIsland.clipboardPreviewLatched = true
+                ClipboardService.buildDragData(clipboardPreviewOverlay)
+                clipboardPreviewOverlay.Drag.active = true
+            }
+        }
+    }
+
+	// Recalculate width when clipboard state changes
+	Connections {
+		target: ClipboardService
+		        function onChanged() {
+            Qt.callLater(function(){ dynamicIsland.updateWidth() })
+            if (ClipboardService.hasItem && (dynamicIsland.dropActive || GlobalStates.islandDropHighlight)) {
+                dynamicIsland.dropOverlayText = Translation.tr("Saved to Island")
+                dynamicIsland.dropSuccessFlash = true
+                dynamicIsland.dropActive = true
+                successFlashTimer.restart()
+                GlobalStates.islandDropHighlight = false
+            }
+        }
+        function onCleared() {
+            // Reset preview/toggle state and width when clipboard is emptied
+            dynamicIsland.clipboardPreviewToggled = false
+            dynamicIsland.clipboardPreviewActiveOverride = false
+            dynamicIsland.clipboardPreviewLatched = false
+            Qt.callLater(function(){ dynamicIsland.updateWidth() })
+        }
+    }
 	
 	// Watch for media title/artist changes
 	Connections {
@@ -115,13 +378,24 @@ Item {
 
 	// Calculate required width based on content
 	function calculateContentWidth() {
-
-
-		// Use shared metrics so calc matches layout exactly
-		const outerPadding = dynamicIsland.outerPadding
-		const rowSpacing = dynamicIsland.rowSpacing
-		const controlButtons = dynamicIsland.controlButtons
-		const progressPreferred = titleContainer?.titleHovered ? dynamicIsland.progressHover : dynamicIsland.progressNormal
+    // Use shared metrics so calc matches layout exactly
+    const outerPadding = dynamicIsland.outerPadding
+    const rowSpacing = dynamicIsland.rowSpacing
+    const controlButtons = dynamicIsland.controlButtons
+    const progressPreferred = titleContainer?.titleHovered ? dynamicIsland.progressHover : dynamicIsland.progressNormal
+    // If clipboard inline text is present AND we're hovering the clipboard icon/popup, override all other content
+    const clipboardHover = dynamicIsland.clipboardHoverActive
+    if (ClipboardService.kind === "text" && clipboardHover) {
+        const minWidth = dynamicIsland.minWidth
+        const maxWidth = dynamicIsland.maxWidth
+        const clipIconSlot = ClipboardService.hasItem ? 22 : 0
+        // baseline measured clipboard text width
+        let textWidth = clipboardTextMeasure?.contentWidth || 0
+        // Desired: outer padding + icon slot + spacing + text width
+        let desired = outerPadding + clipIconSlot + (clipIconSlot > 0 ? rowSpacing : 0) + Math.max(60, textWidth)
+        let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
+        return clamped
+    }
 
 		if (mediaActive) {
 			// Measure the media title's actual implicit width if available
@@ -237,6 +511,83 @@ Item {
 		}
 	}
 
+	// Accept drops for temporary clipboard
+	DropArea {
+		id: islandDropArea
+		anchors.fill: parent
+		z: 300
+		// Disable DropArea while our own clipboard drag is active to avoid self-activation
+		enabled: !dynamicIsland.clipboardDragActive || GlobalStates.islandDropHighlight
+		onEntered: (drag) => {
+			// Ignore drags originating from our own clipboard sources (icon or overlay)
+			if (drag && (drag.source === clipboardPreviewOverlay || drag.source === clipboardIconRect)) {
+				return
+			}
+			dynamicIsland.dropActive = true
+			dynamicIsland.dropOverlayText = Translation.tr("Store in Dynamic Island")
+		}
+		onExited: {
+			dynamicIsland.dropActive = false
+		}
+		onDropped: (event) => {
+			try {
+				ClipboardService.storeFromDrop(event)
+				dynamicIsland.dropOverlayText = Translation.tr("Saved to Island")
+				dynamicIsland.dropSuccessFlash = true
+				dynamicIsland.dropActive = true
+				successFlashTimer.restart()
+				// Accept and clear global highlight
+				event.acceptProposedAction()
+				GlobalStates.islandDropHighlight = false
+			} catch (e) {
+				console.log("DynamicIsland drop error:", e)
+			}
+		}
+	}
+
+	Timer {
+		id: successFlashTimer
+		interval: 900
+		repeat: false
+		onTriggered: {
+			dynamicIsland.dropSuccessFlash = false
+			dynamicIsland.dropActive = false
+		}
+	}
+
+	// Drag overlay: overrides content during drag-over or success flash
+	Rectangle {
+		anchors.fill: parent
+		z: 350
+		// Do not show drop overlay while we're dragging our own clipboard item
+		visible: ((dynamicIsland.dropActive && !dynamicIsland.clipboardDragActive) || dynamicIsland.dropSuccessFlash)
+		radius: Appearance.rounding.full
+		color: Appearance.colors.colLayer1
+		opacity: (dynamicIsland.dropActive || dynamicIsland.dropSuccessFlash) ? 0.92 : 0.0
+		Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.InOutQuad } }
+
+		RowLayout {
+			anchors.fill: parent
+			anchors.margins: 8
+			spacing: 6
+			Item { Layout.fillWidth: true }
+			MaterialSymbol {
+				visible: dynamicIsland.dropSuccessFlash
+				text: "inventory"
+				iconSize: Appearance.font.pixelSize.larger
+				color: Appearance.colors.colOnLayer1
+				Layout.alignment: Qt.AlignVCenter
+			}
+			StyledText {
+				text: dynamicIsland.dropOverlayText
+				font.pixelSize: Appearance.font.pixelSize.small
+				color: Appearance.colors.colOnLayer1
+				Layout.alignment: Qt.AlignVCenter
+			}
+			Item { Layout.fillWidth: true }
+		}
+	}
+
 	// Wave visualizer on top, clipped to rounded island
 	Rectangle {
 		anchors.fill: parent
@@ -261,6 +612,7 @@ Item {
 			blurAmount: 0.2
 			strokeOpacity: 0.12
 			autoScale: true
+			visible: !dynamicIsland.clipboardHoverActive
 		}
 	}
 
@@ -268,6 +620,140 @@ Item {
 	RowLayout {
 		anchors.fill: parent
 		spacing: 8
+		// Keep row present so clipboard indicator/icon remains while previewing
+		visible: true
+
+		// Clipboard indicator slot on the left
+		Item {
+			id: clipboardIndicatorSlot
+			visible: ClipboardService.hasItem
+			// Ensure this slot (and its icon) is above overlay stacking contexts
+			z: 2000
+			Layout.preferredWidth: visible ? 22 : 0
+			Layout.fillHeight: true
+			clip: false
+
+			// Preview popup on hover
+			MouseArea {
+				id: clipHover
+				anchors.fill: parent
+				hoverEnabled: true
+				acceptedButtons: Qt.NoButton
+				preventStealing: true
+				onEntered: {
+                    clipboardHoverGrace.stop()
+                    triggerClipboardToggle()
+                }
+                onExited: {
+                    // Start grace timer; if pointer doesn't re-enter any area, unlatch
+                    clipboardHoverGrace.start()
+                }
+			}
+			Loader {
+				id: previewLoader
+				anchors.fill: parent
+				z: 1000
+				active: ClipboardService.hasItem && ClipboardService.kind !== "text"
+				visible: active && dynamicIsland.clipboardHoverActive
+				sourceComponent: Rectangle {
+					z: 1000
+					radius: Appearance.rounding.small
+					color: Appearance.colors.colLayer2
+					border.color: Appearance.colors.colLayer2Border
+					border.width: 1
+					width: 220
+					height: dynamicIsland.height
+					anchors {
+						// Keep popup within island bounds to avoid clipping
+						right: parent.right
+						rightMargin: 0
+						verticalCenter: parent.verticalCenter
+					}
+					clip: true
+					// Expose hover area so Loader can detect pointer inside the popup
+					property alias popupHover: popupHoverArea
+					// Keep popup visible while hovering; do not toggle here
+					MouseArea {
+						id: popupHoverArea
+						anchors.fill: parent
+						hoverEnabled: true
+						acceptedButtons: Qt.NoButton
+						preventStealing: true
+						onEntered: { clipboardHoverGrace.stop() }
+						onExited: { clipboardHoverGrace.start() }
+					}
+					Item {
+						anchors.fill: parent
+						// Image preview
+						Loader {
+							anchors.fill: parent
+							active: ClipboardService.kind === "image" && !!ClipboardService.imageUrl
+							sourceComponent: Image {
+								anchors.fill: parent
+								fillMode: Image.PreserveAspectFit
+								source: ClipboardService.imageUrl
+							}
+						}
+					}
+				}
+			}
+
+			// Draggable clipboard icon
+			Rectangle {
+				id: clipboardIconRect
+				anchors.centerIn: parent
+				width: 18; height: 18
+				radius: 6
+				z: 401
+				color: Appearance.colors.colSecondaryContainer
+				border.color: Appearance.colors.colPrimary
+				border.width: 1
+				// Attach Drag to the icon itself for reliability
+				Drag.supportedActions: Qt.CopyAction
+				Drag.proposedAction: Qt.CopyAction
+				Drag.hotSpot.x: 9
+				Drag.hotSpot.y: 9
+				Drag.onActiveChanged: {
+					if (!Drag.active) ClipboardService.clear()
+				}
+				MaterialSymbol {
+					anchors.centerIn: parent
+					text: "content_paste"
+					iconSize: 14
+					color: Appearance.colors.colOnSecondaryContainer
+				}
+				MouseArea {
+					id: hoverArea
+					anchors.fill: parent
+					hoverEnabled: true
+					preventStealing: true
+					propagateComposedEvents: false
+					cursorShape: Qt.PointingHandCursor
+					acceptedButtons: Qt.LeftButton | Qt.RightButton
+					onPressed: (event) => { event.accepted = true }
+					onClicked: (event) => { event.accepted = true }
+					onPressAndHold: {
+						ClipboardService.buildDragData(clipboardIconRect)
+						clipboardIconRect.Drag.active = true
+					}
+					onEntered: { clipboardHoverGrace.stop(); triggerClipboardToggle() }
+					onExited: {
+						clipboardHoverGrace.start()
+					}
+				}
+				DragHandler {
+					acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+					target: null
+					grabPermissions: PointerHandler.CanTakeOverFromAnything
+					onActiveChanged: {
+						if (active) {
+							ClipboardService.buildDragData(clipboardIconRect)
+							clipboardIconRect.Drag.active = true
+						}
+					}
+				}
+			}
+		}
 
 		// Hidden measurer for stable baseline media title width
 		StyledText {
@@ -298,40 +784,38 @@ Item {
 				if (GlobalStates.lyricsModeActive) {
 					LyricsService.maybeFetch()
 					Qt.callLater(function(){ dynamicIsland.updateWidth() })
-				} else {
-					Qt.callLater(function(){ dynamicIsland.updateWidth() })
 				}
-			}
 		}
+	}
 
-		// Media section
-		Item {
-			visible: dynamicIsland.mediaActive
-			// Let RowLayout manage sizing
-			Layout.fillWidth: true
-			Layout.fillHeight: true
-			RowLayout {
-				anchors.fill: parent
-				spacing: 4
-				// Info container (title/artist or lyrics or timer)
-				Item {
-					id: titleContainer
-					// Ensure title sits above progress bar and controls
-					z: 10
-					Layout.fillWidth: true
-					// Leave room for progress + controls + paddings using shared metrics
-					// IMPORTANT: For short titles we always reserve normal progress width (no hover compaction)
-					Layout.preferredWidth: {
-						if (GlobalStates.lyricsModeActive) {
-							// In lyrics mode, allow the container to span the full available row width
-							return parent ? parent.width : 0
-						}
-						let measured = mediaTitleMeasure?.contentWidth || 0
-						return measured > 0 ? measured + 12 : 0
-					}
-					Layout.fillHeight: true
-					Layout.alignment: Qt.AlignVCenter
-					Layout.leftMargin: GlobalStates.lyricsModeActive ? 0 : 8
+	// Media section
+	Item {
+		// Hide media content while ANY clipboard preview overlay is active
+		// - Non-text: during hover
+		// - Text: during hover, or when latched/override keeps it on
+		visible: dynamicIsland.mediaActive && !(
+			(dynamicIsland.clipboardHoverActive && ClipboardService.kind !== "text") ||
+			(ClipboardService.kind === "text" && (dynamicIsland.clipboardHoverActive || dynamicIsland.clipboardPreviewLatched || dynamicIsland.clipboardPreviewActiveOverride))
+		)
+		// Let RowLayout manage sizing
+		Layout.fillWidth: true
+		Layout.fillHeight: true
+		RowLayout {
+			anchors.fill: parent
+			spacing: 4
+			// Info container (title/artist or lyrics or timer)
+			Item {
+				id: titleContainer
+				// Ensure title sits above progress bar and controls
+				z: 10
+				Layout.fillWidth: true
+				// Leave room for progress + controls + paddings using shared metrics
+				Layout.preferredWidth: GlobalStates.lyricsModeActive
+					? (parent ? parent.width : 0)
+					: (((mediaTitleMeasure?.contentWidth || 0) > 0) ? (mediaTitleMeasure.contentWidth + 12) : 0)
+				Layout.fillHeight: true
+				Layout.alignment: Qt.AlignVCenter
+				Layout.leftMargin: GlobalStates.lyricsModeActive ? 0 : 8
 
 					
 					property bool titleHovered: false
@@ -479,6 +963,7 @@ Item {
                                             } else {
                                                 item.segments = LyricsService.karaokeSegmentsFor(idx - 1)
                                                 item.baseStartMs = (LyricsService.karaokeLines[idx - 1]?.start || 0)
+                                                item.nextStartMs = (LyricsService.karaokeLines[idx]?.start || lyricOld.item.baseStartMs)
                                                 item.nextStartMs = (LyricsService.karaokeLines[idx]?.start !== undefined) ? LyricsService.karaokeLines[idx].start : (item.baseStartMs + 3600000)
                                                 // Dots removed: no suppressLeadingGap
                                                 item.text = (LyricsService.karaokeLines[idx - 1]?.text || lyricsView.prevText)

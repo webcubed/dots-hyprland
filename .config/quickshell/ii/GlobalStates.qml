@@ -27,6 +27,10 @@ Singleton {
     // Lyrics mode toggle for Dynamic Island
     property bool lyricsModeActive: false
 
+    // Dynamic Island clipboard drag highlight (top-middle region)
+    // Set by bar-wide DropArea; consumed by DynamicIsland overlay
+    property bool islandDropHighlight: false
+
     // Horizontal center X (in window/screen coords used by PanelWindow margins) of the Dynamic Island
     // -1 means unknown/not yet set
     property real dynamicIslandCenterX: -1
