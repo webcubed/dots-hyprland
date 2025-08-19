@@ -1372,7 +1372,7 @@ Item {
 						spermAmplitudeMultiplier: MprisController.activePlayer?.isPlaying ? 0.2 : 0.0
 						valueBarHeight: 3
 						valueBarWidth: parent.width
-						valueBarGap: 10
+						valueBarGap: 8
 
 						// Timer to force progress updates, as the binding can be unreliable
 						Timer {
