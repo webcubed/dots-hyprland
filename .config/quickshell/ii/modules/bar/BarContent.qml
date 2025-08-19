@@ -72,30 +72,6 @@ Item { // Bar content region
         }
     }
 
-    // Detect drags in the top-middle region to highlight Dynamic Island
-    // Middle 40% horizontally, full bar height (top region of screen)
-    DropArea {
-        id: islandHighlightDropArea
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.left: undefined
-        anchors.right: undefined
-        x: Math.round((parent.width - width) / 2)
-        width: Math.round(parent.width * 0.4)
-        height: parent.height
-        z: 50
-        onEntered: { GlobalStates.islandDropHighlight = true }
-        onExited: { GlobalStates.islandDropHighlight = false }
-        onDropped: (event) => {
-            try {
-                // Store here as a fallback in case this DropArea captures the event
-                ClipboardService.storeFromDrop(event)
-                GlobalStates.islandDropHighlight = false
-                event.acceptProposedAction()
-            } catch (e) {
-                console.log("BarContent highlight drop error:", e)
-            }
-        }
-    }
 
     FocusedScrollMouseArea { // Left side | scroll to change brightness
         id: barLeftSideMouseArea
@@ -137,50 +113,12 @@ Item { // Bar content region
                 Layout.leftMargin: Appearance.rounding.screenRounding
                 colBackground: barLeftSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
             }
-
-            ActiveWindow {
-                visible: root.useShortenedForm === 0
-                Layout.rightMargin: Appearance.rounding.screenRounding
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-            }
-        }
-    }
-
-    RowLayout { // Middle section
-        id: middleSection
-        anchors {
-            top: parent.top
-            bottom: parent.bottom
-            horizontalCenter: parent.horizontalCenter
-        }
-        spacing: 4
-
-        BarGroup {
-            id: leftCenterGroup
-            Layout.preferredWidth: root.centerSideModuleWidth
-            Layout.fillHeight: false
-
-            Resources {
-                alwaysShowAllResources: root.useShortenedForm === 2
-                Layout.fillWidth: root.useShortenedForm === 2
-            }
-
-            Media {
-                visible: root.useShortenedForm < 2
-                Layout.fillWidth: true
-            }
-        }
-
-        VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
-        }
-
-        BarGroup {
-            id: middleCenterGroup
+			// Workspace
+			BarGroup {
+            id: workspacegroup
             padding: workspacesWidget.widgetPadding
             Layout.fillHeight: true
-			Layout.leftMargin: 8
+			Layout.leftMargin: 28
 			
 
             Workspaces {
@@ -198,24 +136,19 @@ Item { // Bar content region
                     }
                 }
             }
+			}
         }
-                /*ActiveWindow {
-                    visible: root.useShortenedForm === 0
-                    Layout.rightMargin: Appearance.rounding.screenRounding
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                }*/
-            }
-        
+    }
+
 
 
     RowLayout { // Middle section
-        id: middleSection
+        id: middleSection2
         anchors.centerIn: parent
         spacing: Config.options?.bar.borderless ? 4 : 8
 
         BarGroup {
-            id: leftCenterGroup
+            id: leftCenterGroup2
             // Size to content: use BarGroup's implicitWidth (row contents + padding)
             Layout.fillWidth: false
             Layout.fillHeight: true
