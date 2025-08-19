@@ -5,12 +5,13 @@ import qs
 import QtQuick
 import QtQuick.Layouts
 
-Item {
+MouseArea {
     id: root
     property bool borderless: Config.options.bar.borderless
     property bool alwaysShowAllResources: false
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
-    implicitHeight: 32
+    implicitHeight: Appearance.sizes.barHeight
+    hoverEnabled: true
 
     RowLayout {
         id: rowLayout
@@ -21,24 +22,7 @@ Item {
         anchors.rightMargin: 4
         Resource {
             iconName: "memory"
-            percentage: ResourceUsage.cpuUsage
-            shown: Config.options.bar.resources.alwaysShowCpu || 
-                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
-                root.alwaysShowAllResources
-
-            tooltipHeaderIcon: "memory"
-            tooltipHeaderText: Translation.tr("CPU usage")
-            tooltipData: [
-                { icon: "bolt", label: Translation.tr("Load:"), value: (ResourceUsage.cpuUsage > 0.8 ?
-                    Translation.tr("High") :
-                    ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low"))
-                    + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
-                }
-                ,
-                { icon: "device_thermostat", label: Translation.tr("Temp:"), value: isFinite(ResourceUsage.cpuTempC) ? `${ResourceUsage.cpuTempC}°C` : "" }
-                ,
-                { icon: "air", label: Translation.tr("Fan:"), value: isFinite(ResourceUsage.cpuFanRpm) ? `${Math.round(ResourceUsage.cpuFanRpm)} RPM` : "" }
-            ]
+            percentage: ResourceUsage.memoryUsedPercentage
         }
 
 
@@ -49,32 +33,20 @@ Item {
                 (MprisController.activePlayer?.trackTitle == null) ||
                 root.alwaysShowAllResources
             Layout.leftMargin: shown ? 6 : 0
-
-            tooltipHeaderIcon: "swap_horiz"
-            tooltipHeaderText: Translation.tr("Swap usage")
-            tooltipData: ResourceUsage.swapTotal > 0 ? [
-                { icon: "clock_loader_60", label: Translation.tr("Used:"), value: formatKB(ResourceUsage.swapUsed) },
-                { icon: "check_circle", label: Translation.tr("Free:"), value: formatKB(ResourceUsage.swapFree) },
-                { icon: "empty_dashboard", label: Translation.tr("Total:"), value: formatKB(ResourceUsage.swapTotal) },
-            ] : [
-                { icon: "swap_horiz", label: Translation.tr("Swap:"), value: Translation.tr("Not configured") }
-            ]
         }
 
         Resource {
-            iconName: "memory_alt"
-            percentage: ResourceUsage.memoryUsedPercentage
-	        Layout.leftMargin: 6
-
-            tooltipHeaderIcon: "memory_alt"
-            tooltipHeaderText: Translation.tr("Memory usage")
-            tooltipData: [
-                { icon: "clock_loader_60", label: Translation.tr("Used:"), value: formatKB(ResourceUsage.memoryUsed) },
-                { icon: "check_circle", label: Translation.tr("Free:"), value: formatKB(ResourceUsage.memoryFree) },
-                { icon: "empty_dashboard", label: Translation.tr("Total:"), value: formatKB(ResourceUsage.memoryTotal) },
-            ]
+            iconName: "planner_review"
+            percentage: ResourceUsage.cpuUsage
+            shown: Config.options.bar.resources.alwaysShowCpu || 
+                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
+                root.alwaysShowAllResources
+            Layout.leftMargin: shown ? 6 : 0
         }
 
     }
 
+    ResourcesPopup {
+        hoverTarget: root
+    }
 }

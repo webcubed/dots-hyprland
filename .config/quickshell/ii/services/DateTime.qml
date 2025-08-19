@@ -14,6 +14,7 @@ Singleton {
         precision: SystemClock.Seconds
     }
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
+    property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
 	// Time w/ seconds
 	property string timeWithSeconds: Qt.locale().toString(new Date(), "hh:mm:ss")
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")

@@ -13,7 +13,7 @@ Item {
     property bool borderless: Config.options.bar.borderless
     property bool showDate: Config.options.bar.verbose
 
-    implicitHeight: 32
+    implicitHeight: Appearance.sizes.barHeight
     clip: false
     // Reserve fixed space for time and date using TextMetrics, similar to Resource.qml
     // Root-level metrics so we can also compute implicitWidth correctly

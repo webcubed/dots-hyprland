@@ -264,7 +264,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         id: nonAppResultsTimer
         interval: Config.options.search.nonAppResultDelay
         onTriggered: {
-            mathProcess.calculateExpression(root.searchingText);
+            let expr = root.searchingText;
+            if (expr.startsWith(Config.options.search.prefix.math)) {
+                expr = expr.slice(Config.options.search.prefix.math.length);
+            }
+            mathProcess.calculateExpression(expr);
         }
     }
 
@@ -430,7 +434,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 color: Appearance.colors.colOutlineVariant
             }
 
-            StyledListView { // App results
+            ListView { // App results
                 id: appResults
                 visible: root.showResults
                 Layout.fillWidth: true
@@ -441,8 +445,6 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                 spacing: 2
                 KeyNavigation.up: searchBar
                 highlightMoveDuration: 100
-                add: null
-                remove: null
 
                 onFocusChanged: {
                     if (focus)
@@ -493,7 +495,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                 };
                             }).filter(Boolean);
                         }
-                        if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) {
+                        else if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) {
                             // Clipboard
                             const searchString = root.searchingText.slice(Config.options.search.prefix.emojis.length);
                             return Emojis.fuzzyQuery(searchString).map(entry => {
@@ -529,10 +531,30 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                             fontType: "monospace",
                             materialSymbol: 'terminal',
                             execute: () => {
-                                const cleanedCommand = root.searchingText.replace("file://", "");
+                                let cleanedCommand = root.searchingText.replace("file://", "");
+                                if (cleanedCommand.startsWith(Config.options.search.prefix.shellCommand)) {
+                                    cleanedCommand = cleanedCommand.slice(Config.options.search.prefix.shellCommand.length);
+                                }
                                 Quickshell.execDetached(["bash", "-c", searchingText.startsWith('sudo') ? `${Config.options.apps.terminal} fish -C '${cleanedCommand}'` : cleanedCommand]);
                             }
                         };
+                        const webSearchResultObject = {
+                            name: root.searchingText,
+                            clickActionName: Translation.tr("Search"),
+                            type: Translation.tr("Search the web"),
+                            materialSymbol: 'travel_explore',
+                            execute: () => {
+                                let query = root.searchingText;
+                                if (query.startsWith(Config.options.search.prefix.webSearch)) {
+                                    query = query.slice(Config.options.search.prefix.webSearch.length);
+                                }
+                                let url = Config.options.search.engineBaseUrl + query;
+                                for (let site of Config.options.search.excludedSites) {
+                                    url += ` -site:${site}`;
+                                }
+                                Qt.openUrlExternally(url);
+                            }
+                        }
                         const launcherActionObjects = root.searchActions.map(action => {
                             const actionString = `${Config.options.search.prefix.action}${action.action}`;
                             if (actionString.startsWith(root.searchingText) || root.searchingText.startsWith(actionString)) {
@@ -549,7 +571,19 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                             return null;
                         }).filter(Boolean);
 
+                        //////// Prioritized by prefix /////////
                         let result = [];
+                        const startsWithNumber = /^\d/.test(root.searchingText);
+                        const startsWithMathPrefix = root.searchingText.startsWith(Config.options.search.prefix.math);
+                        const startsWithShellCommandPrefix = root.searchingText.startsWith(Config.options.search.prefix.shellCommand);
+                        const startsWithWebSearchPrefix = root.searchingText.startsWith(Config.options.search.prefix.webSearch);
+                        if (startsWithNumber || startsWithMathPrefix) {
+                            result.push(mathResultObject);
+                        } else if (startsWithShellCommandPrefix) {
+                            result.push(commandResultObject);
+                        } else if (startsWithWebSearchPrefix) {
+                            result.push(webSearchResultObject);
+                        }
 
                         //////////////// Apps //////////////////
                         result = result.concat(AppSearch.fuzzyQuery(root.searchingText).map(entry => {
@@ -561,30 +595,10 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         ////////// Launcher actions ////////////
                         result = result.concat(launcherActionObjects);
 
-                        /////////// Math result & command //////////
-                        const startsWithNumber = /^\d/.test(root.searchingText);
-                        if (startsWithNumber) {
-                            result.push(mathResultObject);
-                            result.push(commandResultObject);
-                        } else {
-                            result.push(commandResultObject);
-                            result.push(mathResultObject);
-                        }
-
-                        ///////////////// Web search ////////////////
-                        result.push({
-                            name: root.searchingText,
-                            clickActionName: Translation.tr("Search"),
-                            type: Translation.tr("Search the web"),
-                            materialSymbol: 'travel_explore',
-                            execute: () => {
-                                let url = Config.options.search.engineBaseUrl + root.searchingText;
-                                for (let site of Config.options.search.excludedSites) {
-                                    url += ` -site:${site}`;
-                                }
-                                Qt.openUrlExternally(url);
-                            }
-                        });
+                        /// Math result, command, web search ///
+                        if (!startsWithShellCommandPrefix) result.push(commandResultObject);
+                        if (!startsWithNumber && !startsWithMathPrefix) result.push(mathResultObject);
+                        if (!startsWithWebSearchPrefix) result.push(webSearchResultObject);
 
                         return result;
                     }
