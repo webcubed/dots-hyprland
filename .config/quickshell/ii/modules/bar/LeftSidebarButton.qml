@@ -16,10 +16,10 @@ RippleButton {
     buttonRadius: Appearance.rounding.full
     colBackgroundHover: Appearance.colors.colLayer1Hover
     colRipple: Appearance.colors.colLayer1Active
-    colBackgroundToggled: Appearance.colors.colSecondaryContainer
+    colBackgroundToggled: "#24273a"
     colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
     colRippleToggled: Appearance.colors.colSecondaryContainerActive
-    toggled: GlobalStates.sidebarLeftOpen
+    toggled: true
     onPressed: {
         GlobalStates.sidebarLeftOpen = !GlobalStates.sidebarLeftOpen;
     }
@@ -72,7 +72,7 @@ RippleButton {
             font.pixelSize: Appearance.font.pixelSize.smaller
             // Right of the icon
             anchors.left: distroIcon.right
-            anchors.leftMargin: 5
+            anchors.leftMargin: 10
             anchors.bottom: distroIcon.bottom
         }
 

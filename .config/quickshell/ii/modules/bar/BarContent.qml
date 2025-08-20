@@ -143,7 +143,7 @@ Item { // Bar content region
 
 
     RowLayout { // Middle section
-        id: middleSection2
+        id: middleSection
         anchors.centerIn: parent
         spacing: Config.options?.bar.borderless ? 4 : 8
 
