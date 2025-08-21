@@ -68,12 +68,73 @@ StyledPopup {
         anchors.centerIn: parent
         spacing: 12
 
+        // CPU first
         ColumnLayout {
             Layout.alignment: Qt.AlignTop
             spacing: 8
 
             ResourceHeaderItem {
                 icon: "memory"
+                label: "CPU"
+            }
+            ColumnLayout {
+                ResourceItem {
+                    icon: "bolt"
+                    label: Translation.tr("Load:")
+                    value: (ResourceUsage.cpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
+                }
+                ResourceItem {
+                    icon: "device_thermostat"
+                    label: Translation.tr("Temp:")
+                    value: (isFinite(ResourceUsage.cpuTempC) ? `${ResourceUsage.cpuTempC} °C` : "")
+                }
+                ResourceItem {
+                    icon: "air"
+                    label: Translation.tr("Fan:")
+                    value: (isFinite(ResourceUsage.cpuFanRpm) ? `${Math.round(ResourceUsage.cpuFanRpm)} RPM` : "")
+                }
+            }
+        }
+
+        // Network throughput section (hidden per request)
+        ColumnLayout {
+            visible: false
+            Layout.alignment: Qt.AlignTop
+            spacing: 8
+
+            ResourceHeaderItem {
+                icon: "swap_horiz"
+                label: Translation.tr("Network")
+            }
+            ColumnLayout {
+                ResourceItem {
+                    icon: "arrow_upward"
+                    label: Translation.tr("Up:")
+                    value: (NetUsage.upBps >= 1e6
+                        ? `${(NetUsage.upBps/1e6).toFixed(2)} MB/s`
+                        : (NetUsage.upBps >= 1e3
+                            ? `${(NetUsage.upBps/1e3).toFixed(1)} KB/s`
+                            : `${Math.round(NetUsage.upBps)} B/s`))
+                }
+                ResourceItem {
+                    icon: "arrow_downward"
+                    label: Translation.tr("Down:")
+                    value: (NetUsage.downBps >= 1e6
+                        ? `${(NetUsage.downBps/1e6).toFixed(2)} MB/s`
+                        : (NetUsage.downBps >= 1e3
+                            ? `${(NetUsage.downBps/1e3).toFixed(1)} KB/s`
+                            : `${Math.round(NetUsage.downBps)} B/s`))
+                }
+            }
+        }
+
+        // RAM last
+        ColumnLayout {
+            Layout.alignment: Qt.AlignTop
+            spacing: 8
+
+            ResourceHeaderItem {
+                icon: "memory_alt"
                 label: "RAM"
             }
             ColumnLayout {
@@ -91,51 +152,6 @@ StyledPopup {
                     icon: "empty_dashboard"
                     label: Translation.tr("Total:")
                     value: formatKB(ResourceUsage.memoryTotal)
-                }
-            }
-        }
-
-        ColumnLayout {
-            visible: ResourceUsage.swapTotal > 0
-            Layout.alignment: Qt.AlignTop
-            spacing: 8
-
-            ResourceHeaderItem {
-                icon: "swap_horiz"
-                label: "Swap"
-            }
-            ColumnLayout {
-                ResourceItem {
-                    icon: "clock_loader_60"
-                    label: Translation.tr("Used:")
-                    value: formatKB(ResourceUsage.swapUsed)
-                }
-                ResourceItem {
-                    icon: "check_circle"
-                    label: Translation.tr("Free:")
-                    value: formatKB(ResourceUsage.swapFree)
-                }
-                ResourceItem {
-                    icon: "empty_dashboard"
-                    label: Translation.tr("Total:")
-                    value: formatKB(ResourceUsage.swapTotal)
-                }
-            }
-        }
-
-        ColumnLayout {
-            Layout.alignment: Qt.AlignTop
-            spacing: 8
-
-            ResourceHeaderItem {
-                icon: "planner_review"
-                label: "CPU"
-            }
-            ColumnLayout {
-                ResourceItem {
-                    icon: "bolt"
-                    label: Translation.tr("Load:")
-                    value: (ResourceUsage.cpuUsage > 0.8 ? Translation.tr("High") : ResourceUsage.cpuUsage > 0.4 ? Translation.tr("Medium") : Translation.tr("Low")) + ` (${Math.round(ResourceUsage.cpuUsage * 100)}%)`
                 }
             }
         }

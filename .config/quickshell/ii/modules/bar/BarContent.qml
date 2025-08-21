@@ -236,7 +236,16 @@ Item { // Bar content region
                     Layout.alignment: Qt.AlignVCenter
                 }
 
+                BarGroup {
+                    Layout.leftMargin: 4
+                    visible: Config.options.bar.weather.enable
+                    WeatherBar {}
+                }
 
+                Loader {
+                    active: Config.options.bar.network.enable
+                    sourceComponent: NetworkIndicator {}
+                }
             }
         }
     }
@@ -320,6 +329,8 @@ Item { // Bar content region
                     property real realSpacing: 15
                     spacing: 0
 
+                    
+
                     Revealer {
                         reveal: Audio.sink?.audio?.muted ?? false
                         Layout.fillHeight: true
@@ -367,6 +378,12 @@ Item { // Bar content region
                         iconSize: Appearance.font.pixelSize.larger
                         color: rightSidebarButton.colText
                     }
+                    // Battery as the rightmost item inside the button (Row is RightToLeft)
+                    BatteryIndicator {
+                        compact: true
+                        Layout.rightMargin: indicatorsRowLayout.realSpacing
+                        Layout.alignment: Qt.AlignVCenter
+                    }
                 }
             }
 
@@ -381,15 +398,6 @@ Item { // Bar content region
                 Layout.fillHeight: true
             }
 
-            // Weather
-            Loader {
-                Layout.leftMargin: 4
-                active: Config.options.bar.weather.enable
-
-                sourceComponent: BarGroup {
-                    WeatherBar {}
-                }
-            }
         }
     }
 }

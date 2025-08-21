@@ -309,6 +309,17 @@ ContentPage {
                 }
             }
         }
+
+        ContentSubsection {
+            title: Translation.tr("Network")
+            ConfigSwitch {
+                text: Translation.tr("Show network in bar")
+                checked: Config.options.bar.network.enable
+                onCheckedChanged: {
+                    Config.options.bar.network.enable = checked;
+                }
+            }
+        }
     }
 
     ContentSection {

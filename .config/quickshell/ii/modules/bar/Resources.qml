@@ -21,26 +21,26 @@ MouseArea {
         anchors.leftMargin: 4
         anchors.rightMargin: 4
         Resource {
-            iconName: "memory"
-            percentage: ResourceUsage.memoryUsedPercentage
-        }
-
-
-        Resource {
-            iconName: "swap_horiz"
-            percentage: ResourceUsage.swapUsedPercentage
-            shown: (Config.options.bar.resources.alwaysShowSwap && percentage > 0) || 
-                (MprisController.activePlayer?.trackTitle == null) ||
-                root.alwaysShowAllResources
-            Layout.leftMargin: shown ? 6 : 0
-        }
-
-        Resource {
-            iconName: "planner_review"
+            iconName: "memory" // CPU icon
             percentage: ResourceUsage.cpuUsage
             shown: Config.options.bar.resources.alwaysShowCpu || 
                 !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                 root.alwaysShowAllResources
+        }
+
+        // Network throughput (replaces swap, keeps swap icon)
+        Resource {
+            iconName: "swap_horiz"
+            // Use NetUsage normalized load (0..1)
+            percentage: NetUsage.load
+            shown: false
+            Layout.leftMargin: 0
+        }
+
+        Resource {
+            iconName: "memory_alt" // Memory icon
+            percentage: ResourceUsage.memoryUsedPercentage
+            shown: true
             Layout.leftMargin: shown ? 6 : 0
         }
 
