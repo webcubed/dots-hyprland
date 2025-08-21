@@ -391,6 +391,7 @@ Item { // Bar content region
                 visible: root.useShortenedForm === 0
                 Layout.fillWidth: false
                 Layout.fillHeight: true
+                invertSide: Config?.options.bar.bottom
             }
 
             Item {
