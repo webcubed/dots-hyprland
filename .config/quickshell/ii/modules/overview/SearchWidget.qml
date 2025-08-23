@@ -596,9 +596,11 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                         result = result.concat(launcherActionObjects);
 
                         /// Math result, command, web search ///
-                        if (!startsWithShellCommandPrefix) result.push(commandResultObject);
-                        if (!startsWithNumber && !startsWithMathPrefix) result.push(mathResultObject);
-                        if (!startsWithWebSearchPrefix) result.push(webSearchResultObject);
+                        if (Config.options.search.prefix.showDefaultActionsWithoutPrefix) {
+                            if (!startsWithShellCommandPrefix) result.push(commandResultObject);
+                            if (!startsWithNumber && !startsWithMathPrefix) result.push(mathResultObject);
+                            if (!startsWithWebSearchPrefix) result.push(webSearchResultObject);
+                        }
 
                         return result;
                     }
