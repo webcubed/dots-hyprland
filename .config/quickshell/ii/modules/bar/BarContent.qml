@@ -199,22 +199,12 @@ Item { // Bar content region
             }
         }}
 
-        VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
-        }
-
-
-
-        VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
-        }
 
         MouseArea {
             id: rightCenterGroup
-            implicitWidth: rightCenterGroupContent.implicitWidth
+            // Constrain to clock content + BarGroup edge paddings
+            implicitWidth: clock.implicitWidth + (rightCenterGroupContent.padding * 2)
             implicitHeight: rightCenterGroupContent.implicitHeight
-            Layout.preferredWidth: root.centerSideModuleWidth
-
             onPressed: {
                 GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
             }
@@ -222,32 +212,36 @@ Item { // Bar content region
             BarGroup {
                 id: rightCenterGroupContent
                 //anchors.fill: parent
-				// Padding
-				padding: 10
+                padding: 10
                 ClockWidget {
+                    id: clock
                     showDate: (Config.options.bar.verbose && root.useShortenedForm < 2)
-                    Layout.alignment: Qt.AlignVCenter
+                    // Center the clock via Layout to avoid off-center padding in BarGroup
+                    Layout.alignment: Qt.AlignHCenter
                     // Let the widget size to its implicitWidth computed via TextMetrics
                     Layout.fillWidth: false
                 }
+
 
                 UtilButtons {
                     visible: (Config.options.bar.verbose && root.useShortenedForm === 0)
                     Layout.alignment: Qt.AlignVCenter
                 }
 
-                BarGroup {
-                    Layout.leftMargin: 4
-                    visible: Config.options.bar.weather.enable
-                    WeatherBar {}
-                }
+                
 
+                // Prevent the network indicator from contributing width inside this BarGroup
                 Loader {
-                    active: Config.options.bar.network.enable
+                    active: false
+                    visible: false
+                    width: 0
+                    height: 0
                     sourceComponent: NetworkIndicator {}
                 }
             }
+            
         }
+        
     }
 
     FocusedScrollMouseArea { // Right side | scroll to change volume
