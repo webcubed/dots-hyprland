@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs
 import qs.services
@@ -122,6 +123,39 @@ ContentPage {
             wrapMode: TextEdit.Wrap
             onTextChanged: {
                 Config.options.networking.userAgent = text;
+            }
+        }
+    }
+
+    // BPM / Key derived audio features
+    ContentSection {
+        title: Translation.tr("BPM / Key")
+        ContentSubsection {
+            title: Translation.tr("Spotify Audio Features")
+            ConfigRow {
+                uniform: true
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Client ID")
+                    text: Config.options?.bpmkey?.spotify?.clientId ?? ""
+                    onTextChanged: Config.options.bpmkey.spotify.clientId = text
+                }
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Client Secret")
+                    text: Config.options?.bpmkey?.spotify?.clientSecret ?? ""
+                    onTextChanged: Config.options.bpmkey.spotify.clientSecret = text
+                }
+            }
+            ConfigRow {
+                uniform: true
+                MaterialTextField {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Optional: Bearer token (overrides client credentials if set)")
+                    text: Config.options?.bpmkey?.spotify?.bearerToken ?? ""
+                    onTextChanged: Config.options.bpmkey.spotify.bearerToken = text
+                    wrapMode: TextEdit.Wrap
+                }
             }
         }
     }

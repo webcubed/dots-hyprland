@@ -164,7 +164,7 @@ Item { // Bar content region
             
         }
 		BarGroup {
-/* Media {
+            /* Media {
                 visible: root.useShortenedForm < 2
                 Layout.fillWidth: true
             } */
@@ -240,6 +240,11 @@ Item { // Bar content region
                 }
             }
             
+        }
+        BarGroup {
+            Layout.leftMargin: 12
+            visible: Config.options.bar.weather.enable
+            WeatherBar {}
         }
         
     }
@@ -370,6 +375,7 @@ Item { // Bar content region
                     MaterialSymbol {
                         text: Bluetooth.bluetoothConnected ? "bluetooth_connected" : Bluetooth.bluetoothEnabled ? "bluetooth" : "bluetooth_disabled"
                         iconSize: Appearance.font.pixelSize.larger
+                        Layout.rightMargin: indicatorsRowLayout.realSpacing
                         color: rightSidebarButton.colText
                     }
                     // Battery as the rightmost item inside the button (Row is RightToLeft)

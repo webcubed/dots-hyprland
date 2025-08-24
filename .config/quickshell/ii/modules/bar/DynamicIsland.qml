@@ -41,9 +41,9 @@ Item {
 	property bool showActiveWindow: !mediaActive && !timerActive
 
 	// Dynamic width properties
-	property real baseWidth: 280  // Slightly wider to accommodate controls
-	property real maxWidth: 560   // Allow a bit more room for short-but-complete titles
-	property real minWidth: 260   // Ensure controls never overflow
+	property real baseWidth: 320  // Wider default to accommodate music icon + text
+	property real maxWidth: 640   // Allow more room before clipping
+	property real minWidth: 300   // Ensure controls never overflow
 	property real targetWidth: baseWidth
 	// Set true when current media title qualifies as "short" by character count
 	property bool shortTitleActive: false
@@ -58,6 +58,7 @@ Item {
 	readonly property int outerPadding: 16                    // combined left+right
 	readonly property int rowSpacing: 4                       // spacing inside RowLayout
 	readonly property int controlButtons: 18 * 3 + rowSpacing * 2 // three 18px buttons with gaps
+	readonly property int lyricsIconSlot: 20                  // slot for the music-note toggle
 	readonly property int progressNormal: 120
 	readonly property int progressHover: 80
 	// Titles at or below this pixel width should display fully without overflow
@@ -382,7 +383,10 @@ Item {
     const outerPadding = dynamicIsland.outerPadding
     const rowSpacing = dynamicIsland.rowSpacing
     const controlButtons = dynamicIsland.controlButtons
-    const progressPreferred = titleContainer?.titleHovered ? dynamicIsland.progressHover : dynamicIsland.progressNormal
+    // Only shrink progress on hover if the title is actually truncated
+    const progressPreferred = (titleContainer?.titleHovered && titleContainer?.titleTruncated)
+        ? dynamicIsland.progressHover
+        : dynamicIsland.progressNormal
     // If clipboard inline text is present AND we're hovering the clipboard icon/popup, override all other content
     const clipboardHover = dynamicIsland.clipboardHoverActive
     if (ClipboardService.kind === "text" && clipboardHover) {
@@ -407,17 +411,22 @@ Item {
 			let lyricWidth = GlobalStates.lyricsModeActive ? (lyricMeasure?.contentWidth || 0) : 0
 			let textWidth = GlobalStates.lyricsModeActive ? lyricWidth : titleWidth
 
-			// Compute desired widths for normal (non-hover) and hover states explicitly
-			const normalProgress = dynamicIsland.progressNormal
-			const hoverProgress = dynamicIsland.progressHover
-			const widthBuffer = 12 // Add tolerance to prevent clipping
-			let textDesiredWidth = textWidth + widthBuffer
-			let desiredNormal = outerPadding + textDesiredWidth + rowSpacing + normalProgress + rowSpacing + controlButtons
-			let desiredHover = outerPadding + textWidth + rowSpacing + hoverProgress + rowSpacing + controlButtons + widthBuffer
-
-			// In lyrics mode, ignore title hover/truncation behavior entirely
+			// In lyrics mode, progress is hidden. Otherwise, shrink only when hover+truncated
+			// Evaluate hover/truncation state up-front for consistent logic
 			const hoveringTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
 			const hoveringNotTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && !titleContainer?.titleTruncated)
+			// Compute desired widths for normal (non-hover) and hover states explicitly
+			const normalProgress = GlobalStates.lyricsModeActive ? 0 : dynamicIsland.progressNormal
+			const hoverProgress = GlobalStates.lyricsModeActive ? 0 : (hoveringTruncated ? dynamicIsland.progressHover : dynamicIsland.progressNormal)
+			const controlsWidth = GlobalStates.lyricsModeActive ? 0 : controlButtons
+			const widthBuffer = 12 // Add tolerance to prevent clipping
+			// Always include the lyrics icon slot when media is active
+			const iconSlot = dynamicIsland.lyricsIconSlot
+			let textDesiredWidth = textWidth + widthBuffer
+			let desiredNormal = outerPadding + iconSlot + rowSpacing + textDesiredWidth + (normalProgress > 0 ? rowSpacing + normalProgress : 0) + (controlsWidth > 0 ? rowSpacing + controlsWidth : 0)
+			let desiredHover = outerPadding + iconSlot + rowSpacing + textWidth + (hoverProgress > 0 ? rowSpacing + hoverProgress : 0) + (controlsWidth > 0 ? rowSpacing + controlsWidth : 0) + widthBuffer
+
+			// In lyrics mode, ignore title hover/truncation behavior entirely (handled above)
 
 			// If the full title fits, use that width. Otherwise, let hover logic take over.
 			const fullWidthFits = desiredNormal < maxWidth
@@ -803,6 +812,46 @@ Item {
 		RowLayout {
 			anchors.fill: parent
 			spacing: 4
+			// Lyrics toggle icon (music note) to the left of title/artist
+			Item {
+				id: lyricsToggleSlot
+				visible: dynamicIsland.mediaActive
+				Layout.preferredWidth: 20
+				Layout.fillHeight: true
+				Layout.alignment: Qt.AlignVCenter
+				Rectangle {
+					anchors.centerIn: parent
+					width: 18; height: 18
+					radius: 6
+					color: GlobalStates.lyricsModeActive ? Appearance.colors.colSecondaryContainer : "transparent"
+					border.color: GlobalStates.lyricsModeActive ? Appearance.colors.colPrimary : "transparent"
+					border.width: GlobalStates.lyricsModeActive ? 1 : 0
+					MaterialSymbol {
+						anchors.centerIn: parent
+						text: "music_note"
+						iconSize: 14
+						color: GlobalStates.lyricsModeActive ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1
+					}
+					MouseArea {
+						id: lyricsToggleArea
+						anchors.fill: parent
+						hoverEnabled: true
+						cursorShape: Qt.PointingHandCursor
+						onClicked: {
+							GlobalStates.lyricsModeActive = !GlobalStates.lyricsModeActive
+							if (GlobalStates.lyricsModeActive) {
+								LyricsService.maybeFetch()
+							}
+							Qt.callLater(function(){ dynamicIsland.updateWidth() })
+						}
+					}
+				}
+			}
+
+			// Media info popup on hover of the music-note toggle
+			MediaInfoPopup {
+				hoverTarget: lyricsToggleArea
+			}
 			// Info container (title/artist or lyrics or timer)
 			Item {
 				id: titleContainer
@@ -1339,9 +1388,9 @@ Item {
 				// Progress bar
 				Item {
 					Layout.fillWidth: true
-					Layout.minimumWidth: titleContainer.titleHovered ? 60 : 80
-					Layout.preferredWidth: titleContainer.titleHovered ? 80 : 120
-					Layout.maximumWidth: titleContainer.titleHovered ? 100 : 160
+					Layout.minimumWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 60 : 80
+					Layout.preferredWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 80 : 120
+					Layout.maximumWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 100 : 160
 					Layout.preferredHeight: 8
 					// Keep progress bar visually below the title
 					z: 0

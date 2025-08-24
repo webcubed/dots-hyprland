@@ -3,11 +3,19 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
+import "icons/AsusBoltPath.js" as AsusBolt
 
 MouseArea {
     id: root
     // Compact mode: used inside tight layouts (e.g., right sidebar button)
     property bool compact: false
+    // Catppuccin Macchiato colors
+    // Blue (neutral): #8AADF4, Green (charging): #A6DA95, Red (low): #ED8796, Text: #CAD3F5
+    property color accentColor: "#8AADF4" // neutral
+    property color chargingColor: "#A6DA95"
+    property color lowColor: "#ED8796"
+    property color textColor: "#CAD3F5"
     property bool borderless: Config.options.bar.borderless
     readonly property var chargeState: Battery.chargeState
     readonly property bool isCharging: Battery.isCharging
@@ -16,8 +24,9 @@ MouseArea {
     readonly property bool isLow: percentage <= Config.options.battery.low / 100
 
     // In compact mode, keep indicator compact but clearly visible
-    implicitWidth: compact ? 40 : batteryProgress.implicitWidth
-    implicitHeight: Appearance.sizes.barHeight
+    // Use a short pill to avoid stretching the parent Row/Button vertically
+    implicitWidth: compact ? 28 : batteryProgress.implicitWidth
+    implicitHeight: compact ? 18 : Appearance.sizes.barHeight
     Layout.preferredWidth: implicitWidth
     Layout.maximumWidth: implicitWidth
     clip: true
@@ -28,11 +37,11 @@ MouseArea {
         id: batteryProgress
         anchors.centerIn: parent
         // In compact mode, make the visual bar thicker and wider for visibility
-        implicitWidth: root.compact ? 40 : implicitWidth
-        implicitHeight: root.compact ? 12 : implicitHeight
+        implicitWidth: root.compact ? root.implicitWidth : implicitWidth
+        implicitHeight: root.compact ? 14 : implicitHeight
         value: percentage
-        highlightColor: (isLow && !isCharging)
-                         ? Appearance.m3colors.m3error
+        highlightColor: (root.isLow && !root.isCharging)
+                         ? root.lowColor
                          : (root.compact ? Appearance.colors.colPrimary : Appearance.colors.colOnSecondaryContainer)
         // Do not paint CPB in compact; we draw an external overlay but keep CPB for sizing
         opacity: root.compact ? 0 : 1
@@ -96,51 +105,167 @@ MouseArea {
 
     // External overlay for compact mode to avoid CPB clipping and ensure visibility
     Item {
+        id: compactOverlay
         // Center overlay on CPB to match its position precisely
         anchors.centerIn: batteryProgress
         visible: root.compact
         z: 10
-        // Drive size from CPB implicit size in compact mode
-        width: batteryProgress.implicitWidth
-        height: batteryProgress.implicitHeight
+        // Self-size in compact mode: fixed height, width from text + padding
+        height: 14
+        // Bolt is drawn OUTSIDE the pill, so no internal reserve is needed
+        readonly property int boltReserve: 0
+        width: Math.max((textLabel ? textLabel.implicitWidth + 12 : 28), height * 2)
 
-        // Background track
+        readonly property real progress: Math.max(0, Math.min(1, root.percentage))
+        // Pixel-accurate segment width. Entire pill width is available (bolt is outside)
+        readonly property int progressPx: Math.round(Math.max(0, width) * progress)
+        readonly property int basePx: Math.max(0, width - progressPx)
+        readonly property color activeColor: (root.isLow && !root.isCharging)
+                                             ? root.lowColor
+                                             : ((root.isCharging || root.isPluggedIn) ? root.chargingColor : root.accentColor)
+        // Desaturated/low-opacity variants
+        // Darker outline for the unfilled portion so contrast is clear while staying on-palette
+        // Use a stronger factor so it is clearly different from the progress outline
+        readonly property color baseOutlineColor: (root.isLow && !root.isCharging)
+                                                 ? Qt.darker(root.lowColor, 1.25)
+                                                 : Qt.darker(Appearance.colors.colPrimary, 1.35)
+        readonly property color baseFillColor: (root.isLow && !root.isCharging)
+                                               ? Qt.rgba(237/255,135/255,150/255, 0.15)
+                                               : ((root.isCharging || root.isPluggedIn)
+                                                     ? Qt.rgba(166/255,218/255,149/255, 0.15)
+                                                     : Qt.rgba(138/255,173/255,244/255, 0.15))
+
+        // Subtle background track to define the pill silhouette
+        // No background fill; outline-only look
         Rectangle {
             anchors.fill: parent
-            radius: height / 2
-            color: Appearance.colors.colOnLayer1
-            opacity: 0.35
-        }
-
-        // Fill proportional to battery percentage
-        Rectangle {
-            anchors.verticalCenter: parent.verticalCenter
-            x: 0
-            width: Math.max(2, Math.round(root.percentage * parent.width))
-            height: parent.height
-            radius: height / 2
-            color: (isLow && !isCharging) ? Appearance.m3colors.m3error : Appearance.colors.colPrimary
-        }
-
-        // Outline for contrast on light backgrounds
-        Rectangle {
-            anchors.fill: parent
-            radius: height / 2
+            radius: Math.max(0, Math.round(height / 2) - 2)
             color: "transparent"
-            border.width: 1.25
-            border.color: Appearance.colors.colOnLayer1
+            opacity: 0
+            z: 10
+        }
+
+        // BASE OUTLINE via mask: outer fill + inner cutout to leave a crisp 2px outline
+        Item {
+            anchors.fill: parent
+            z: 11
+            // Outer body in baseOutlineColor
+            Rectangle {
+                anchors.fill: parent
+                color: compactOverlay.baseOutlineColor
+                radius: Math.max(0, Math.round(parent.height / 2) - 2)
+            }
+            // Inner cutout matches background, leaving ~2px outline
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 2
+                color: "#1E2030"
+                radius: Math.max(0, Math.round(parent.height / 2) - 4)
+            }
+        }
+
+        // PROGRESS OUTLINE via mask: clip width to progress and carve interior
+        Item {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            clip: true
+            // Progress clip strictly to computed progress width
+            width: Math.max(0, Math.min(parent.progressPx, parent.width))
+            visible: width > 0
+            z: 12
+            // Outer body in activeColor
+            Rectangle {
+                anchors.fill: parent
+                color: compactOverlay.activeColor
+                radius: Math.max(0, Math.round(parent.height / 2) - 2)
+            }
+            // Inner cutout to create outline-only look
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 2
+                color: "#1E2030"
+                radius: Math.max(0, Math.round(parent.height / 2) - 4)
+            }
+            // Inner-edge trim: removes tiny green crescent at the left when width is small
+            // Drawn over the inner area only (starting at x=2) so the 2px outer outline remains intact
+            Rectangle {
+                x: 2
+                y: 2
+                width: 2
+                height: Math.max(0, parent.height - 4)
+                color: "#1E2030"
+                radius: 0
+                visible: parent.width > 0 && parent.width < parent.height
+            }
+            // Right seam eraser: flatten the rounded end so the join is a clean vertical cut
+            // Use pill radius to fully cover the curvature; affect only inner area to preserve 2px outer outline
+            Rectangle {
+                readonly property int r: Math.max(2, Math.round(parent.height / 2) - 2)
+                x: Math.max(2, parent.width - r)
+                y: 2
+                width: Math.max(2, r)
+                height: Math.max(0, parent.height - 4)
+                color: "#1E2030"
+                radius: 0
+                visible: parent.width > 0 && parent.width < compactOverlay.width
+            }
+        }
+
+        // Compact-mode bolt: outside the pill on the right
+        MaterialSymbol {
+            id: compactBolt
+            visible: root.compact && (root.isCharging || root.isPluggedIn)
+            anchors.verticalCenter: compactOverlay.verticalCenter
+            anchors.left: compactOverlay.right
+            anchors.leftMargin: 4
+            z: 13
+            text: "bolt"
+            iconSize: Math.round(compactOverlay.height * 0.60)
+            fill: 1
+            color: "#8aadf4"
         }
     }
 
-    // Compact-mode percentage label overlay
-    StyledText {
+    // Mask behind compact text to hide outline seam near digits (drawn under the text)
+    Rectangle {
         visible: root.compact
-        anchors.centerIn: batteryProgress
-        z: 11
-        font.pixelSize: Appearance.font.pixelSize.small
-        text: batteryProgress.text
-        color: Appearance.colors.colOnSecondaryContainer
+        anchors.centerIn: compactOverlay
+        // Keep mask below overlay outlines so they remain visible
+        z: 9
+        // Use a generous rounded pill to fully cover inner borders under text
+        radius: Math.round(height / 2)
+        // Slightly smaller than text so it doesn't cover top/bottom strokes
+        width: Math.max(0, textLabel.implicitWidth - 4)
+        height: Math.max(0, textLabel.implicitHeight - 5)
+        layer.enabled: true
+        layer.samples: 4
+        // Match the bar background for seamless cover
+        color: "#1E2030"
     }
+
+    // Compact-mode percentage label overlay (crisp text)
+    Text {
+        visible: root.compact
+        anchors.centerIn: compactOverlay
+        z: 12
+        // Explicit size for compact clarity
+        font.pixelSize: 8
+        font.bold: true
+        font.kerning: false
+        font.hintingPreference: Font.PreferFullHinting
+        renderType: Text.NativeRendering
+        // Improve edge contrast while keeping fill color
+        style: Text.Outline
+        styleColor: "#141724"
+        text: batteryProgress.text
+        color: "#8aadf4"
+        id: textLabel
+    }
+
+    // (duplicate compact bolt removed; defined within `compactOverlay` above)
+
+    // (removed) duplicate compact bolt implementation
 
     BatteryPopup {
         id: batteryPopup

@@ -287,6 +287,16 @@ Singleton {
                 }
             }
 
+            // Derived audio features (BPM / Key)
+            property JsonObject bpmkey: JsonObject {
+                property JsonObject spotify: JsonObject {
+                    property string clientId: ""
+                    property string clientSecret: ""
+                    // Optional: if set, used directly instead of client credentials
+                    property string bearerToken: ""
+                }
+            }
+
             property JsonObject search: JsonObject {
                 property int nonAppResultDelay: 30 // This prevents lagging when typing
                 property string engineBaseUrl: "https://www.google.com/search?q="
