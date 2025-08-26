@@ -213,17 +213,23 @@ MouseArea {
         }
 
         // Compact-mode bolt: outside the pill on the right
-        MaterialSymbol {
+        Shape {
             id: compactBolt
             visible: root.compact && (root.isCharging || root.isPluggedIn)
             anchors.verticalCenter: compactOverlay.verticalCenter
             anchors.left: compactOverlay.right
             anchors.leftMargin: 4
+            width: Math.round(compactOverlay.height * 0.6)
+            height: width
             z: 13
-            text: "bolt"
-            iconSize: Math.round(compactOverlay.height * 0.60)
-            fill: 1
-            color: "#8aadf4"
+            
+            ShapePath {
+                fillColor: "#8aadf4"
+                strokeWidth: 0
+                startX: 0; startY: 0
+                
+                PathSvg { path: AsusBolt.pathData }
+            }
         }
     }
 

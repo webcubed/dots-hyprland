@@ -301,7 +301,8 @@ Item { // Bar content region
                 Layout.rightMargin: Appearance.rounding.screenRounding
                 Layout.fillWidth: false
 
-                implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2
+                // Add extra width to account for the bolt indicator
+                implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2 + 20
                 implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
                 buttonRadius: Appearance.rounding.full
