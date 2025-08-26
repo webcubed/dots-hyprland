@@ -1,7 +1,5 @@
 import qs.modules.common
-import qs.modules.common.widgets
 import qs.services
-import qs
 import QtQuick
 import QtQuick.Layouts
 
@@ -23,25 +21,24 @@ MouseArea {
         Resource {
             iconName: "memory" // CPU icon
             percentage: ResourceUsage.cpuUsage
-            shown: Config.options.bar.resources.alwaysShowCpu || 
-                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
-                root.alwaysShowAllResources
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }
 
         // Network throughput (replaces swap, keeps swap icon)
-        Resource {
+        /*Resource {
             iconName: "swap_horiz"
             // Use NetUsage normalized load (0..1)
             percentage: NetUsage.load
             shown: false
             Layout.leftMargin: 0
-        }
+        }*/
 
         Resource {
             iconName: "memory_alt" // Memory icon
             percentage: ResourceUsage.memoryUsedPercentage
             shown: true
             Layout.leftMargin: shown ? 6 : 0
+            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
         }
 
     }

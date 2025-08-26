@@ -152,6 +152,9 @@ Singleton {
                 property JsonObject resources: JsonObject {
                     property bool alwaysShowSwap: true
                     property bool alwaysShowCpu: false
+                    property int memoryWarningThreshold: 95
+                    property int swapWarningThreshold: 85
+                    property int cpuWarningThreshold: 90
                 }
                 property JsonObject network: JsonObject {
                     property bool enable: true
@@ -220,6 +223,7 @@ Singleton {
             }
 
             property JsonObject language: JsonObject {
+                property string ui: "auto" // UI language. "auto" for system locale, or specific language code like "zh_CN", "en_US"
                 property JsonObject translator: JsonObject {
                     property string engine: "auto" // Run `trans -list-engines` for available engines. auto should use google
                     property string targetLanguage: "auto" // Run `trans -list-all` for available languages
@@ -325,6 +329,15 @@ Singleton {
                     property JsonObject zerochan: JsonObject {
                         property string username: "[unset]"
                     }
+                }
+                property JsonObject cornerOpen: JsonObject {
+                    property bool enable: true
+                    property bool bottom: false
+                    property bool valueScroll: true
+                    property bool clickless: false
+                    property real cornerRegionWidth: 60
+                    property real cornerRegionHeight: 2
+                    property bool visualize: false
                 }
             }
 
