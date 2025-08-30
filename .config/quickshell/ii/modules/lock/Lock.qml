@@ -14,6 +14,7 @@ Scope {
 	// https://github.com/quickshell-mirror/quickshell-examples/tree/master/lockscreen
 	LockContext {
 		id: lockContext
+		active: GlobalStates.screenLocked
 
 		onUnlocked: {
 			// Unlock the screen before exiting, or the compositor will display a

@@ -12,6 +12,7 @@ Scope {
     property bool unlockInProgress: false
     property bool showFailure: false
     property bool _unlocked: false // Prevents multiple unlock signals
+    property bool active: false
 
     signal shouldReFocus()
     signal unlocked()
@@ -41,10 +42,12 @@ Scope {
         GlobalStates.screenLockContainsCharacters = currentText.length > 0;
         passwordClearTimer.restart();
     }
-    Component.onCompleted: {
-        // Start biometric authentications immediately
-        fprintdPam.start();
-        interactivePam.start(); // This will trigger howdy
+    onActiveChanged: {
+        if (active) {
+            // Start biometric authentications immediately
+            fprintdPam.start();
+            interactivePam.start(); // This will trigger howdy
+        }
     }
 
     Timer {
@@ -62,10 +65,11 @@ Scope {
 
         config: "fingerprint"
         onCompleted: (result) => {
+            // If fingerprint fails, restart it after a short delay to allow retries
+
             if (result == PamResult.Success)
                 handleUnlockSuccess();
             else
-                // If fingerprint fails, restart it after a short delay to allow retries
                 Qt.callLater(fprintdPam.start);
         }
     }
@@ -76,8 +80,9 @@ Scope {
 
         config: "quickshell"
         onPamMessage: {
+            // Only respond with a password if the user has entered one
+
             if (this.responseRequired)
-                // Only respond with a password if the user has entered one
                 this.respond(root.currentText);
 
         }
