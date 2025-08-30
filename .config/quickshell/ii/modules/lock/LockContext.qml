@@ -1,25 +1,35 @@
-import qs
 import QtQuick
 import Quickshell
 import Quickshell.Services.Pam
+import qs
 
 Scope {
     id: root
-    signal shouldReFocus()
-    signal unlocked()
-    signal failed()
 
     // These properties are in the context and not individual lock surfaces
     // so all surfaces can share the same state.
     property string currentText: ""
     property bool unlockInProgress: false
     property bool showFailure: false
+    property bool _unlocked: false // Prevents multiple unlock signals
 
-    Timer {
-        id: passwordClearTimer
-        interval: 10000
-        onTriggered: {
-            root.currentText = "";
+    signal shouldReFocus()
+    signal unlocked()
+    signal failed()
+
+    function tryUnlock() {
+        if (unlockInProgress)
+            return ;
+
+        root.unlockInProgress = true;
+        // Start the PAM context that handles password and howdy
+        interactivePam.start();
+    }
+
+    function handleUnlockSuccess() {
+        if (!_unlocked) {
+            _unlocked = true;
+            root.unlocked();
         }
     }
 
@@ -31,33 +41,58 @@ Scope {
         GlobalStates.screenLockContainsCharacters = currentText.length > 0;
         passwordClearTimer.restart();
     }
-
-    function tryUnlock() {
-        root.unlockInProgress = true;
-        pam.start();
+    Component.onCompleted: {
+        // Start biometric authentications immediately
+        fprintdPam.start();
+        interactivePam.start(); // This will trigger howdy
     }
 
-    PamContext {
-        id: pam
+    Timer {
+        id: passwordClearTimer
 
-        // pam_unix will ask for a response for the password prompt
-        onPamMessage: {
-            if (this.responseRequired) {
-                this.respond(root.currentText);
-            }
+        interval: 10000
+        onTriggered: {
+            root.currentText = "";
         }
+    }
 
-        // pam_unix won't send any important messages so all we need is the completion status.
-        onCompleted: result => {
+    // PAM context for fprintd (fingerprint)
+    PamContext {
+        id: fprintdPam
+
+        config: "hyprlock-fprintd"
+        onCompleted: (result) => {
+            if (result == PamResult.Success)
+                handleUnlockSuccess();
+            else
+                // If fingerprint fails, restart it after a short delay to allow retries
+                Qt.callLater(fprintdPam.start);
+        }
+    }
+
+    // PAM context for howdy (face) and pam_unix (password)
+    PamContext {
+        id: interactivePam
+
+        config: "hyprlock"
+        onPamMessage: {
+            if (this.responseRequired)
+                // Only respond with a password if the user has entered one
+                this.respond(root.currentText);
+
+        }
+        onCompleted: (result) => {
             if (result == PamResult.Success) {
-                root.unlocked();
+                handleUnlockSuccess();
             } else {
                 root.showFailure = true;
                 GlobalStates.screenUnlockFailed = true;
+                // If auth fails (e.g. wrong password), restart to allow howdy to try again
+                Qt.callLater(interactivePam.start);
             }
-
             root.currentText = "";
             root.unlockInProgress = false;
         }
     }
+
 }
