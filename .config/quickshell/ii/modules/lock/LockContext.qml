@@ -60,7 +60,7 @@ Scope {
     PamContext {
         id: fprintdPam
 
-        config: "hyprlock-fprintd"
+        config: "fingerprint"
         onCompleted: (result) => {
             if (result == PamResult.Success)
                 handleUnlockSuccess();
@@ -74,7 +74,7 @@ Scope {
     PamContext {
         id: interactivePam
 
-        config: "hyprlock"
+        config: "quickshell"
         onPamMessage: {
             if (this.responseRequired)
                 // Only respond with a password if the user has entered one

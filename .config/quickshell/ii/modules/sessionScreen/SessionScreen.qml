@@ -173,7 +173,7 @@ Scope {
                         id: sessionLogout
                         buttonIcon: "logout"
                         buttonText: Translation.tr("Logout")
-                        onClicked: { Session.logout(); sessionRoot.hide() }
+                        onClicked: { Quickshell.run("hyprctl dispatch exit"); sessionRoot.hide() }
                         onFocusChanged: { if (focus) sessionRoot.subtitle = buttonText }
                         KeyNavigation.left: sessionSleep
                         KeyNavigation.right: sessionTaskManager
