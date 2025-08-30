@@ -22,6 +22,7 @@ Item { // Player instance
     property list<real> visualizerPoints: []
     property real maxVisualizerValue: 1000 // Max value in the data points
     property int visualizerSmoothing: 2 // Number of points to average for smoothing
+    property real radius
 
     component TrackChangeButton: RippleButton {
         implicitWidth: 24
@@ -107,7 +108,7 @@ Item { // Player instance
         anchors.fill: parent
         anchors.margins: Appearance.sizes.elevationMargin
         color: blendedColors.colLayer0
-        radius: root.popupRounding
+        radius: playerController.radius
 
         // Clip children to rounded corners instead of using OpacityMask
         clip: true
@@ -136,7 +137,7 @@ Item { // Player instance
             Rectangle {
                 anchors.fill: parent
                 color: ColorUtils.transparentize(blendedColors.colLayer0, 0.3)
-                radius: root.popupRounding
+                radius: playerController.radius
             }
         }
 

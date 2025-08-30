@@ -50,7 +50,7 @@ ContentPage {
     }
     ContentSection {
         title: Translation.tr("AI")
-        MaterialTextField {
+        MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("System prompt")
             text: Config.options.ai.systemPrompt
@@ -116,7 +116,7 @@ ContentPage {
 
     ContentSection {
         title: Translation.tr("Networking")
-        MaterialTextField {
+        MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("User agent (for services that require it)")
             text: Config.options.networking.userAgent
@@ -264,7 +264,7 @@ ContentPage {
             ConfigRow {
                 uniform: true
 
-                MaterialTextField {
+                MaterialTextArea {
                     Layout.fillWidth: true
                     placeholderText: Translation.tr("Action")
                     text: Config.options.search.prefix.action
@@ -273,7 +273,7 @@ ContentPage {
                         Config.options.search.prefix.action = text;
                     }
                 }
-                MaterialTextField {
+                MaterialTextArea {
                     Layout.fillWidth: true
                     placeholderText: Translation.tr("Clipboard")
                     text: Config.options.search.prefix.clipboard
@@ -282,7 +282,7 @@ ContentPage {
                         Config.options.search.prefix.clipboard = text;
                     }
                 }
-                MaterialTextField {
+                MaterialTextArea {
                     Layout.fillWidth: true
                     placeholderText: Translation.tr("Emojis")
                     text: Config.options.search.prefix.emojis
@@ -295,7 +295,7 @@ ContentPage {
         }
         ContentSubsection {
             title: Translation.tr("Web search")
-            MaterialTextField {
+            MaterialTextArea {
                 Layout.fillWidth: true
                 placeholderText: Translation.tr("Base URL")
                 text: Config.options.search.engineBaseUrl
