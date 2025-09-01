@@ -36,74 +36,24 @@ Item { // Wrapper
         searchInput.text = text;
         root.searchingText = text;
     }
-	property var allCommands: [
+
+    property var searchActions: [
         {
-            name: "model",
-            description: Translation.tr("Choose model"),
-            execute: (args) => {
-                Ai.setModel(args[0]);
+            action: "accentcolor",
+            execute: args => {
+                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch", "--color", ...(args != '' ? [`${args}`] : [])]);
             }
         },
         {
-            name: "tool",
-            description: Translation.tr("Set the tool to use for the model."),
-            execute: (args) => {
-                // console.log(args)
-                if (args.length == 0 || args[0] == "get") {
-                    Ai.addMessage(Translation.tr("Usage: %1tool TOOL_NAME").arg(root.commandPrefix), Ai.interfaceRole);
-                } else {
-                    const tool = args[0];
-                    const switched = Ai.setTool(tool);
-                    if (switched) {
-                        Ai.addMessage(Translation.tr("Tool set to: %1").arg(tool), Ai.interfaceRole);
-                    }
-                }
+            action: "dark",
+            execute: () => {
+                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "dark", "--noswitch"]);
             }
         },
         {
-            name: "prompt",
-            description: Translation.tr("Set the system prompt for the model."),
-            execute: (args) => {
-                if (args.length === 0 || args[0] === "get") {
-                    Ai.printPrompt();
-                    return;
-                }
-                Ai.loadPrompt(args.join(" ").trim());
-            }
-        },
-        {
-            name: "key",
-            description: Translation.tr("Set API key"),
-            execute: (args) => {
-                if (args[0] == "get") {
-                    Ai.printApiKey()
-                } else {
-                    Ai.setApiKey(args[0]);
-                }
-            }
-        },
-        {
-            name: "save",
-            description: Translation.tr("Save chat"),
-            execute: (args) => {
-                const joinedArgs = args.join(" ")
-                if (joinedArgs.trim().length == 0) {
-                    Ai.addMessage(Translation.tr("Usage: %1save CHAT_NAME").arg(root.commandPrefix), Ai.interfaceRole);
-                    return;
-                }
-                Ai.saveChat(joinedArgs)
-            }
-        },
-        {
-            name: "load",
-            description: Translation.tr("Load chat"),
-            execute: (args) => {
-                const joinedArgs = args.join(" ")
-                if (joinedArgs.trim().length == 0) {
-                    Ai.addMessage(Translation.tr("Usage: %1load CHAT_NAME").arg(root.commandPrefix), Ai.interfaceRole);
-                    return;
-                }
-                Ai.loadChat(joinedArgs)
+            action: "konachanwallpaper",
+            execute: () => {
+                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random_konachan_wall.sh")]);
             }
         },
         {
@@ -114,81 +64,33 @@ Item { // Wrapper
             }
         },
         {
-            name: "temp",
-            description: Translation.tr("Set temperature (randomness) of the model. Values range between 0 to 2 for Gemini, 0 to 1 for other models. Default is 0.5."),
-            execute: (args) => {
-                // console.log(args)
-                if (args.length == 0 || args[0] == "get") {
-                    Ai.printTemperature()
-                } else {
-                    const temp = parseFloat(args[0]);
-                    Ai.setTemperature(temp);
+            action: "superpaste",
+            execute: args => {
+                if (!/^(\d+)/.test(args.trim())) { // Invalid if doesn't start with numbers
+                    Quickshell.execDetached([
+                        "notify-send", 
+                        Translation.tr("Superpaste"), 
+                        Translation.tr("Usage: <tt>%1superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>%1superpaste 4i</tt> for the last 4 images\n<tt>%1superpaste 7</tt> for the last 7 entries").arg(Config.options.search.prefix.action),
+                        "-a", "Shell"
+                    ]);
+                    return;
                 }
+                const syntaxMatch = /^(?:(\d+)(i)?)/.exec(args.trim());
+                const count = syntaxMatch[1] ? parseInt(syntaxMatch[1]) : 1;
+                const isImage = !!syntaxMatch[2];
+                Cliphist.superpaste(count, isImage);
             }
         },
-        {
-            name: "test",
-            description: Translation.tr("Markdown test"),
-            execute: () => {
-                Ai.addMessage(`
-<think>
-A longer think block to test revealing animation
-OwO wem ipsum dowo sit amet, consekituwet awipiscing ewit, sed do eiuwsmod tempow inwididunt ut wabowe et dowo mawa. Ut enim ad minim weniam, quis nostwud exeucitation uwuwamcow bowowis nisi ut awiquip ex ea commowo consequat. Duuis aute iwuwe dowo in wepwependewit in wowuptate velit esse ciwwum dowo eu fugiat nuwa pawiatuw. Excepteuw sint occaecat cupidatat non pwowoident, sunt in cuwpa qui officia desewunt mowit anim id est wabowum. Meouw! >w<
-Mowe uwu wem ipsum!
-</think>
-## ✏️ Markdown test
-### Formatting
-
-- *Italic*, \`Monospace\`, **Bold**, [Link](https:/\/example.com)
-- Arch lincox icon <img src="${Quickshell.shellPath("assets/icons/arch-symbolic.svg")}" height="${Appearance.font.pixelSize.small}"/>
-
-### Table
-
-Quickshell vs AGS/Astal
-
-|                          | Quickshell       | AGS/Astal         |
-|--------------------------|------------------|-------------------|
-| UI Toolkit               | Qt               | Gtk3/Gtk4         |
-| Language                 | QML              | Js/Ts/Lua         |
-| Reactivity               | Implied          | Needs declaration |
-| Widget placement         | Mildly difficult | More intuitive    |
-| Bluetooth & Wifi support | ❌               | ✅                |
-| No-delay keybinds        | ✅               | ❌                |
-| Development              | New APIs         | New syntax        |
-
-### Code block
-
-Just a hello world...
-
-\`\`\`cpp
-#include <bits/stdc++.h>
-// This is intentionally very long to test scrolling
-const std::string GREETING = "UwU";
-int main(int argc, char* argv[]) {
-    std::cout << GREETING;
-}
-\`\`\`
-
-### LaTeX
-
-
-Inline w/ dollar signs: $\\frac{1}{2} = \\frac{2}{4}$
-
-Inline w/ double dollar signs: $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$
-
-Inline w/ backslash and square brackets \\[\\int_0^\\infty \\frac{1}{x^2} dx = \\infty\\]
-
-Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
-`, 
-                    Ai.interfaceRole);
-            }
-        },
-    ]
-    property var searchActions: [
         {
             action: "dark",
             execute: () => {
                 Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--mode", "dark", "--noswitch"]);
+            }
+        },
+        {
+            action: "konachanwallpaper",
+            execute: () => {
+                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random_konachan_wall.sh")]);
             }
         },
         {
@@ -198,62 +100,35 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
             }
         },
         {
-            action: "wall",
-            execute: () => {
-                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath]);
-            }
-        },
-        {
-            action: "konachanwall",
-            execute: () => {
-                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random_konachan_wall.sh")]);
-            }
-        },
-        {
-            action: "accentcolor",
+            action: "superpaste",
             execute: args => {
-                Quickshell.execDetached([Directories.wallpaperSwitchScriptPath, "--noswitch", "--color", ...(args != '' ? [`${args}`] : [])]);
+                if (!/^(\d+)/.test(args.trim())) { // Invalid if doesn't start with numbers
+                    Quickshell.execDetached([
+                        "notify-send", 
+                        Translation.tr("Superpaste"), 
+                        Translation.tr("Usage: <tt>%1superpaste NUM_OF_ENTRIES[i]</tt>\nSupply <tt>i</tt> when you want images\nExamples:\n<tt>%1superpaste 4i</tt> for the last 4 images\n<tt>%1superpaste 7</tt> for the last 7 entries").arg(Config.options.search.prefix.action),
+                        "-a", "Shell"
+                    ]);
+                    return;
+                }
+                const syntaxMatch = /^(?:(\d+)(i)?)/.exec(args.trim());
+                const count = syntaxMatch[1] ? parseInt(syntaxMatch[1]) : 1;
+                const isImage = !!syntaxMatch[2];
+                Cliphist.superpaste(count, isImage);
             }
         },
         {
-            action: "do",
-            execute: (args) => {
-                Todo.addTask(args)
+            action: "todo",
+            execute: args => {
+                Todo.addTask(args);
             }
         },
-		{
-			action: "done",
-			execute: (args) => {
-				Todo.markDoneByContent(args)
-			}
-		},
-		{
-			action: "ai",
-			execute: (inputText) => {
-			    if (inputText.startsWith("/")) {
-        			// Handle special commands
-            		const command = inputText.split(" ")[0].substring(1);
-            		const args = inputText.split(" ").slice(1);
-            		const commandObj = root.allCommands.find(cmd => cmd.name === `${command}`);
-            		if (commandObj) {
-                		commandObj.execute(args);
-            		} else {
-                		Ai.addMessage(Translation.tr("Unknown command: ") + command, Ai.interfaceRole);
-            		}
-        		} else {
-            		Ai.sendUserMessage(inputText);
-        		}
-			}
-		},
-		{
-			action: "dci",
-			execute: (args) => {
-				// Clear clipboard entry of index specified by args
-				// dci for delete clipboard item
-				Quickshell.execDetached(["bash", "-c", `cliphist delete-query $(cliphist decode ${args})`])
-
-			}
-		},
+        {
+            action: "wallpaper",
+            execute: () => {
+                GlobalStates.wallpaperSelectorOpen = true;
+            }
+        },
     ]
 
     function focusFirstItem() {
@@ -485,8 +360,15 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
                                     },
                                     actions: [
                                         {
+                                            name: "Copy",
+                                            materialIcon: "content_copy",
+                                            execute: () => {
+                                                Cliphist.copy(entry);
+                                            }
+                                        },
+                                        {
                                             name: "Delete",
-                                            icon: "delete",
+                                            materialIcon: "delete",
                                             execute: () => {
                                                 Cliphist.deleteEntry(entry);
                                             }

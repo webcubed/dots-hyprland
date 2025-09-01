@@ -203,7 +203,7 @@ Singleton {
             property string main: "Lexend"
             property string title: "Lexend"
             property string iconMaterial: "Material Symbols Rounded"
-            property string iconNerd: "SpaceMono NF"
+            property string iconNerd: "JetBrains Mono NF"
 			property string iconFA: "Font Awesome 6 Pro"
             property string monospace: "JetBrains Mono NF"
             property string reading: "Readex Pro"
