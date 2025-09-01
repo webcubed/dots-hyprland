@@ -23,6 +23,7 @@ Singleton {
     // Details for a selected word
     property var details: ({ word: "", pos: "", definition: "", pronunciation: "", fullText: "" })
     property string _lastDetailWord: ""
+    property bool enableApiPronunciationFallback: true
 
     function search(term) {
         const q = (term || "").trim();
@@ -97,12 +98,39 @@ Singleton {
     }
 
     function parsePronunciation(raw) {
-        // Try to find a /.../ phonetic pattern or a Pronunciation: ... line
-        const m1 = raw.match(/\/(?:[^\/]|\\\/)+\//);
-        if (m1) return m1[0];
-        const m2 = raw.match(/Pronunciation\s*[:=]\s*([^\n]+)/i);
-        if (m2) return m2[1].trim();
+        if (!raw) return "";
+        // 1) Explicit "Pronunciation:" line
+        let m = /(^|\n)\s*Pronunciation\s*[:=]\s*([^\n]+)/i.exec(raw);
+        if (m) {
+            let s = m[2].trim();
+            s = s.replace(/^"|"$/g, "");
+            s = s.replace(/\\"/g, '"');
+            s = s.replace(/\s+/g, ' ').trim();
+            if (s && !/^\[[A-Za-z]{1,5}\]$/.test(s)) return s;
+        }
+        // 2) IPA between slashes
+        m = /\/(?!\s)([^\/]{2,})\//.exec(raw);
+        if (m) {
+            const ipa = `/${m[1].trim()}/`;
+            if (ipa.length > 3) return ipa;
+        }
+        // 3) Bracketed candidate with IPA-like chars (avoid [wn], [gcide], etc.)
+        const bracketRe = /\[([^\]\r\n]{2,})\]/g;
+        let bm;
+        while ((bm = bracketRe.exec(raw)) !== null) {
+            const inside = bm[1].trim();
+            // Skip short plain alpha like [wn], [GCIDE]
+            if (/^[A-Za-z]{1,6}$/.test(inside)) continue;
+            // Heuristic: contains some IPA/phonetic markers
+            if (/[ˈˌɪʊəɛɜɔæðθʃʒɒɑŋɡː]/.test(inside)) return `[${inside}]`;
+        }
         return "";
+    }
+
+    function primaryWord(word) {
+        if (!word) return "";
+        // Use first token to avoid multi-form entries like "define defined"
+        return word.trim().split(/\s+/)[0];
     }
 
     function getDetails(word) {
@@ -116,6 +144,17 @@ Singleton {
         detailsFetcher.running = false;
         detailsFetcher.command = ["bash", "-lc", script];
         detailsFetcher.running = true;
+        // Also fetch pronunciation from GCIDE (if available)
+        pronFetcher.running = false;
+        pronFetcher.command = ["bash", "-lc", `dict -d gcide -- '${W}' 2>/dev/null || true`];
+        pronFetcher.running = true;
+        // Kick off API fallback; it will only apply if nothing found locally
+        if (root.enableApiPronunciationFallback) {
+            apiPronFetcher.running = false;
+            const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`;
+            apiPronFetcher.command = ["bash", "-lc", `curl -s ${StringUtils.shellSingleQuoteEscape(url)}`];
+            apiPronFetcher.running = true;
+        }
     }
 
     Process {
@@ -137,9 +176,24 @@ Singleton {
                     const word = body.slice(0, nl).trim();
                     const raw = body.slice(nl + 1);
                     const parsed = root.parseOne(raw);
-                    out.push({ word, definition: parsed.definition, pos: parsed.pos });
+                    out.push({ word, primary: root.primaryWord(word), definition: parsed.definition, pos: parsed.pos });
                 }
-                root.results = out;
+                // Rank by fuzzy similarity to the current term (if available)
+                const term = (root._lastTerm || '').toLowerCase();
+                if (typeof Levendist !== 'undefined') {
+                    out.forEach(it => it._score = Levendist.computeTextMatchScore((it.primary || it.word || '').toLowerCase(), term));
+                    out.sort((a, b) => (b._score || 0) - (a._score || 0));
+                }
+                // Dedupe by primary token to avoid entries like "define defined"
+                const seen = {};
+                const deduped = [];
+                for (let i = 0; i < out.length; i++) {
+                    const p = out[i].primary || out[i].word;
+                    if (seen[p]) continue;
+                    seen[p] = true;
+                    deduped.push(out[i]);
+                }
+                root.results = deduped;
             }
         }
     }
@@ -150,14 +204,71 @@ Singleton {
             onStreamFinished: {
                 const raw = text || "";
                 const parsed = root.parseOne(raw);
-                const pron = root.parsePronunciation(raw);
+                const prevPron = root.details.word === root._lastDetailWord ? (root.details.pronunciation || "") : "";
                 root.details = ({
                     word: root._lastDetailWord,
                     pos: parsed.pos,
                     definition: parsed.definition,
-                    pronunciation: pron,
+                    pronunciation: prevPron || root.parsePronunciation(raw),
                     fullText: raw
                 });
+            }
+        }
+    }
+
+    Process {
+        id: pronFetcher
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const raw = text || "";
+                const pron = root.parsePronunciation(raw);
+                if (!pron) return;
+                if (root.details.word !== root._lastDetailWord) return; // stale
+                root.details = ({
+                    word: root.details.word,
+                    pos: root.details.pos,
+                    definition: root.details.definition,
+                    pronunciation: pron,
+                    fullText: root.details.fullText
+                });
+            }
+        }
+    }
+
+    Process {
+        id: apiPronFetcher
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const s = text || "";
+                    if (!s) return;
+                    const arr = JSON.parse(s);
+                    if (!Array.isArray(arr) || arr.length === 0) return;
+                    // Find first phonetic text
+                    let phon = "";
+                    for (let i = 0; i < arr.length && !phon; i++) {
+                        const e = arr[i];
+                        const ps = e?.phonetics || [];
+                        for (let j = 0; j < ps.length; j++) {
+                            const t = (ps[j]?.text || '').trim();
+                            if (t) { phon = t; break; }
+                        }
+                    }
+                    if (!phon) return;
+                    if (root.details.word !== root._lastDetailWord) return; // stale
+                    // Only apply if we still don't have a pronunciation
+                    if (!root.details.pronunciation) {
+                        root.details = ({
+                            word: root.details.word,
+                            pos: root.details.pos,
+                            definition: root.details.definition,
+                            pronunciation: phon,
+                            fullText: root.details.fullText
+                        });
+                    }
+                } catch (e) {
+                    // ignore
+                }
             }
         }
     }

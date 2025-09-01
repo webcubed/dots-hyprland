@@ -13,6 +13,8 @@ import Quickshell.Hyprland
 RippleButton {
     id: root
     property var entry
+    // Allow caller to keep overview open when clicking this item
+    property bool keepOpen: entry?.keepOpen ?? false
     property string query
     property bool entryShown: entry?.shown ?? true
     property string itemType: entry?.type ?? Translation.tr("App")
@@ -94,7 +96,9 @@ RippleButton {
     }
 
     onClicked: {
-        GlobalStates.overviewOpen = false
+        if (!root.keepOpen) {
+            GlobalStates.overviewOpen = false
+        }
         root.itemExecute()
     }
     Keys.onPressed: (event) => {

@@ -17,7 +17,7 @@ Singleton {
     property list<var> results: [] // [{ word }]
     property int maxResults: 8
     property string currentTerm: ""
-    property var details: ({ word: "", definition: "" })
+    property var details: ({ word: "", definition: "", definitions: [] })
     property string _lastSearch: ""
     property string _lastDetailWord: ""
 
@@ -88,12 +88,13 @@ Singleton {
                 try {
                     const obj = JSON.parse(s);
                     let list = obj?.list || [];
-                    if (list.length === 0) { root.details = ({ word: root.currentTerm, definition: "" }); return; }
+                    if (list.length === 0) { root.details = ({ word: root.currentTerm, definition: "", definitions: [] }); return; }
                     list.sort((a, b) => (b?.thumbs_up || 0) - (a?.thumbs_up || 0));
-                    const top = list[0];
-                    root.details = ({ word: (top?.word || '').trim(), definition: (top?.definition || '').replace(/\r?\n/g, '\n').trim() });
+                    const defs = list.map(d => (d?.definition || '').replace(/\r?\n/g, '\n').trim()).filter(Boolean);
+                    const word = (list[0]?.word || '').trim() || root.currentTerm;
+                    root.details = ({ word, definition: (defs[0] || ''), definitions: defs });
                 } catch (e) {
-                    root.details = ({ word: root.currentTerm, definition: "" });
+                    root.details = ({ word: root.currentTerm, definition: "", definitions: [] });
                 }
             }
         }

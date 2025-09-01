@@ -21,6 +21,53 @@ Item { // Wrapper
 
     property string mathResult: ""
 
+    // Caches to avoid rebuilding models each evaluation (prevents flicker)
+    property string _dictSuggestKey: ""
+    property var _dictSuggestItems: []
+    property string _dictDetailKey: ""
+    property var _dictDetailItems: []
+    property string _udSuggestKey: ""
+    property var _udSuggestItems: []
+    property string _udDetailKey: ""
+    property var _udDetailItems: []
+    property string _udPendingSearchTerm: ""
+    property string _udPendingDetailWord: ""
+
+    function wrapLines(text, width) {
+        const out = [];
+        if (!text) return out;
+        let s = ("" + text).replace(/\s+/g, ' ').trim();
+        while (s.length > width) {
+            let br = s.lastIndexOf(' ', width);
+            if (br <= 0) br = width;
+            out.push(s.slice(0, br));
+            s = s.slice(br).trim();
+        }
+        if (s.length) out.push(s);
+        return out;
+    }
+
+    // Debounce UD suggestions to avoid calling search() during model evaluation
+    Timer {
+        id: udSuggestTimer
+        interval: 150
+        repeat: false
+        onTriggered: {
+            if (root._udPendingSearchTerm !== undefined)
+                UrbanDictionary.search(root._udPendingSearchTerm);
+        }
+    }
+
+    Timer {
+        id: udDetailTimer
+        interval: 120
+        repeat: false
+        onTriggered: {
+            if (root._udPendingDetailWord && root._udPendingDetailWord.length > 0)
+                UrbanDictionary.getDetails(root._udPendingDetailWord);
+        }
+    }
+
     function disableExpandAnimation() {
         searchWidthBehavior.enabled = false;
     }
@@ -283,11 +330,13 @@ Item { // Wrapper
                 bottomMargin: 10
                 spacing: 2
                 KeyNavigation.up: searchBar
-                highlightMoveDuration: 100
+                highlightMoveDuration: 0
+                cacheBuffer: 2000
+                reuseItems: true
 
                 onFocusChanged: {
-                    if (focus)
-                        appResults.currentIndex = 1;
+                    if (focus && appResults.count > 0)
+                        appResults.currentIndex = 0;
                 }
 
                 Connections {
@@ -301,7 +350,10 @@ Item { // Wrapper
                 model: ScriptModel {
                     id: model
                     onValuesChanged: {
-                        root.focusFirstItem();
+                        // Only refocus if currentIndex is invalid; avoid resetting highlight while hovering
+                        if (appResults.currentIndex < 0 || appResults.currentIndex >= appResults.count) {
+                            root.focusFirstItem();
+                        }
                     }
                     values: {
                         // Search results are handled here
@@ -365,38 +417,32 @@ Item { // Wrapper
                                 // Suggestion mode: show words only
                                 const searchString = raw.trim();
                                 Dictionary.search(searchString);
-                                return (Dictionary.results || []).map(entry => ({
+                                const list = (Dictionary.results || []);
+                                const key = `dict:suggest:${list.map(e => e.primary || e.word).join('|')}`;
+                                if (key === root._dictSuggestKey) return root._dictSuggestItems;
+                                const items = list.map(entry => ({
                                     name: `${entry.word}`,
-                                    clickActionName: Translation.tr("Copy word"),
+                                    clickActionName: Translation.tr("Select"),
                                     type: Translation.tr("Dictionary"),
                                     materialSymbol: 'menu_book',
+                                    keepOpen: true,
                                     actions: [
                                         { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = entry.word },
                                     ],
-                                    execute: () => { Quickshell.clipboardText = entry.word; }
+                                    execute: () => { const w = (entry.primary || entry.word).split(/\s+/)[0]; root.setSearchingText(`d ${w}!`); }
                                 })).filter(Boolean);
+                                root._dictSuggestKey = key;
+                                root._dictSuggestItems = items;
+                                return items;
                             } else {
                                 // Details mode: d <word>!flags
                                 const word = raw.slice(0, exclIdx).trim();
                                 const flags = raw.slice(exclIdx + 1).trim();
                                 if (word.length === 0) return [];
                                 Dictionary.getDetails(word);
-
-                                function wrapLines(txt, width) {
-                                    const out = [];
-                                    if (!txt) return out;
-                                    let s = txt.replace(/\s+/g, ' ').trim();
-                                    while (s.length > width) {
-                                        let br = s.lastIndexOf(' ', width);
-                                        if (br <= 0) br = width;
-                                        out.push(s.slice(0, br));
-                                        s = s.slice(br).trim();
-                                    }
-                                    if (s.length) out.push(s);
-                                    return out;
-                                }
-
                                 const det = Dictionary.details || { word: word, definition: "", pos: "", pronunciation: "", fullText: "" };
+                                const dkey = `dict:detail:${word}!${flags}:${(det.definition||det.fullText||'').length}:${det.pos}:${det.pronunciation}`;
+                                if (dkey === root._dictDetailKey) return root._dictDetailItems;
                                 const actionsCommon = [
                                     { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
                                     { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition || det.fullText },
@@ -404,17 +450,54 @@ Item { // Wrapper
                                 ];
 
                                 if (flags.includes('d')) {
-                                    // Definition-only view; multi-row if long
-                                    const lines = wrapLines(det.definition || det.fullText, 80);
-                                    if (lines.length === 0) return [];
-                                    return lines.map((line, idx) => ({
-                                        name: line,
-                                        clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
-                                        type: idx === 0 ? Translation.tr("Definition") : "",
+                                    // Definition-only view; single entry (no multi-line split)
+                                    const text = det.definition || det.fullText || Translation.tr("No definition");
+                                    const items = [{
+                                        name: text,
+                                        clickActionName: Translation.tr("Copy definition"),
+                                        type: Translation.tr("Definition"),
                                         materialSymbol: 'menu_book',
-                                        actions: idx === 0 ? actionsCommon : [],
-                                        execute: () => { Quickshell.clipboardText = det.definition || det.fullText; }
-                                    }));
+                                        keepOpen: true,
+                                        actions: actionsCommon,
+                                        execute: () => { root.setSearchingText(`d ${word}!d`); }
+                                    }];
+                                    root._dictDetailKey = dkey;
+                                    root._dictDetailItems = items;
+                                    return items;
+                                }
+
+                                if (flags.includes('p')) {
+                                    // Pronunciation-only view; single entry
+                                    const text = det.pronunciation || Translation.tr("No pronunciation found");
+                                    const items = [{
+                                        name: text,
+                                        clickActionName: Translation.tr("Copy pronunciation"),
+                                        type: Translation.tr("Pronunciation"),
+                                        materialSymbol: 'record_voice_over',
+                                        keepOpen: true,
+                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation } ],
+                                        execute: () => { root.setSearchingText(`d ${word}!p`); }
+                                    }];
+                                    root._dictDetailKey = dkey;
+                                    root._dictDetailItems = items;
+                                    return items;
+                                }
+
+                                if (flags.includes('t')) {
+                                    // Part-of-speech-only view; single entry
+                                    const text = det.pos || Translation.tr("Unknown");
+                                    const items = [{
+                                        name: text,
+                                        clickActionName: Translation.tr("Copy type"),
+                                        type: Translation.tr("Part of speech"),
+                                        materialSymbol: 'category',
+                                        keepOpen: true,
+                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pos } ],
+                                        execute: () => { root.setSearchingText(`d ${word}!t`); }
+                                    }];
+                                    root._dictDetailKey = dkey;
+                                    root._dictDetailItems = items;
+                                    return items;
                                 }
 
                                 // General detail menu
@@ -424,41 +507,46 @@ Item { // Wrapper
                                     clickActionName: Translation.tr("Copy word"),
                                     type: Translation.tr("Dictionary"),
                                     materialSymbol: 'menu_book',
+                                    keepOpen: true,
                                     actions: actionsCommon,
                                     execute: () => { Quickshell.clipboardText = det.word || word; }
                                 });
                                 if (det.pronunciation) {
                                     out.push({
                                         name: Translation.tr("Pronunciation: %1").arg(det.pronunciation),
-                                        clickActionName: Translation.tr("Copy"),
+                                        clickActionName: Translation.tr("Show"),
                                         type: Translation.tr("Pronunciation"),
                                         materialSymbol: 'record_voice_over',
+                                        keepOpen: true,
                                         actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation } ],
-                                        execute: () => { Quickshell.clipboardText = det.pronunciation; }
+                                        execute: () => { root.setSearchingText(`d ${word}!p`); }
                                     });
                                 }
                                 if (det.pos) {
                                     out.push({
                                         name: Translation.tr("Part of speech: %1").arg(det.pos),
-                                        clickActionName: Translation.tr("Copy"),
+                                        clickActionName: Translation.tr("Show"),
                                         type: Translation.tr("Part of speech"),
                                         materialSymbol: 'category',
+                                        keepOpen: true,
                                         actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pos } ],
-                                        execute: () => { Quickshell.clipboardText = det.pos; }
+                                        execute: () => { root.setSearchingText(`d ${word}!t`); }
                                     });
                                 }
-                                const defLines = wrapLines(det.definition || det.fullText, 80);
-                                defLines.forEach((line, idx) => {
-                                    out.push({
-                                        name: line,
-                                        clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
-                                        type: idx === 0 ? Translation.tr("Definition") : "",
-                                        materialSymbol: 'menu_book',
-                                        actions: idx === 0 ? actionsCommon : [],
-                                        execute: () => { Quickshell.clipboardText = det.definition || det.fullText; }
-                                    });
+                                // Single definition entry (no multi-line split)
+                                out.push({
+                                    name: det.definition || det.fullText || Translation.tr("No definition"),
+                                    clickActionName: Translation.tr("Show definition"),
+                                    type: Translation.tr("Definition"),
+                                    materialSymbol: 'menu_book',
+                                    keepOpen: true,
+                                    actions: actionsCommon,
+                                    execute: () => { root.setSearchingText(`d ${word}!d`); }
                                 });
-                                return out;
+                                const all = out;
+                                root._dictDetailKey = dkey;
+                                root._dictDetailItems = all;
+                                return all;
                             }
                         }
                         else if (root.searchingText.startsWith('ud ')) {
@@ -468,51 +556,63 @@ Item { // Wrapper
                             if (exclIdx === -1) {
                                 // Suggestion mode: list of words only
                                 const searchString = raw.trim();
-                                UrbanDictionary.search(searchString);
-                                return (UrbanDictionary.results || []).map(entry => ({
+                                // Debounced search to prevent model side-effects
+                                root._udPendingSearchTerm = searchString;
+                                udSuggestTimer.restart();
+                                const list = (UrbanDictionary.results || []);
+                                const key = `ud:suggest:${list.map(e => e.word).join('|')}`;
+                                if (key === root._udSuggestKey) return root._udSuggestItems;
+                                const items = list.map(entry => ({
                                     name: `${entry.word}`,
-                                    clickActionName: Translation.tr("Copy word"),
+                                    clickActionName: Translation.tr("Select"),
                                     type: Translation.tr("Urban Dictionary"),
                                     materialSymbol: 'forum',
+                                    keepOpen: true,
                                     actions: [
                                         { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = entry.word },
                                     ],
-                                    execute: () => { Quickshell.clipboardText = entry.word; }
+                                    execute: () => { root.setSearchingText(`ud ${entry.word}!`); }
                                 }));
+                                root._udSuggestKey = key;
+                                root._udSuggestItems = items;
+                                return items;
                             } else {
                                 // Details mode: show definition across multiple rows
                                 const word = raw.slice(0, exclIdx).trim();
+                                const flags = raw.slice(exclIdx + 1).trim();
                                 if (word.length === 0) return [];
-                                UrbanDictionary.getDetails(word);
-                                function wrapLines(txt, width) {
-                                    const out = [];
-                                    if (!txt) return out;
-                                    let s = txt.replace(/\s+/g, ' ').trim();
-                                    while (s.length > width) {
-                                        let br = s.lastIndexOf(' ', width);
-                                        if (br <= 0) br = width;
-                                        out.push(s.slice(0, br));
-                                        s = s.slice(br).trim();
-                                    }
-                                    if (s.length) out.push(s);
-                                    return out;
+                                // Debounce details fetch to prevent model re-eval flicker
+                                if (root._udPendingDetailWord !== word) {
+                                    root._udPendingDetailWord = word;
+                                    udDetailTimer.restart();
                                 }
-                                const det = UrbanDictionary.details || { word: word, definition: "" };
+                                const det = UrbanDictionary.details || { word: word, definition: "", definitions: [] };
                                 const actionsCommon = [
                                     { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
                                     { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition },
                                     { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, det.definition || Translation.tr("No definition"), "-a", "Shell"]) }
                                 ];
-                                const lines = wrapLines(det.definition, 80);
-                                if (lines.length === 0) return [];
-                                return lines.map((line, idx) => ({
-                                    name: line,
-                                    clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
-                                    type: idx === 0 ? Translation.tr("Urban Dictionary") : "",
+                                const dkey = `ud:detail:${word}!${flags}:${(det.definitions||[]).length}:${(det.definition||'').length}`;
+                                if (dkey === root._udDetailKey) return root._udDetailItems;
+                                // Build single entry per definition (no multi-line split)
+                                const defs = (det.definitions && det.definitions.length) ? det.definitions : (det.definition ? [det.definition] : []);
+                                const items = defs.map(def => ({
+                                    name: def,
+                                    clickActionName: Translation.tr("Show definition"),
+                                    type: Translation.tr("Urban Dictionary"),
                                     materialSymbol: 'forum',
-                                    actions: idx === 0 ? actionsCommon : [],
-                                    execute: () => { Quickshell.clipboardText = det.definition; }
+                                    keepOpen: true,
+                                    actions: [
+                                        { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
+                                        { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = def },
+                                        { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, def || Translation.tr("No definition"), "-a", "Shell"]) }
+                                    ],
+                                    execute: () => { root.setSearchingText(`ud ${word}!d`); }
                                 }));
+                                if (items.length === 0) return [];
+                                root._udDetailKey = dkey;
+                                root._udDetailItems = items;
+                                return items;
                             }
                         }
 
