@@ -210,7 +210,9 @@ Item { // Wrapper
                     Layout.leftMargin: 15
                     iconSize: Appearance.font.pixelSize.huge
                     color: Appearance.m3colors.m3onSurface
-                    text: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? 'content_paste_search' : 'search'
+                    text: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? 'content_paste_search'
+                        : (root.searchingText.startsWith('d ') ? 'menu_book'
+                        : (root.searchingText.startsWith('ud ') ? 'forum' : 'search'))
                 }
                 TextField { // Search box
                     id: searchInput
@@ -355,6 +357,164 @@ Item { // Wrapper
                                 };
                             }).filter(Boolean);
                         }
+                        else if (root.searchingText.startsWith('d ')) {
+                            // Dictionary via `dict`
+                            const raw = root.searchingText.slice(2);
+                            const exclIdx = raw.indexOf('!');
+                            if (exclIdx === -1) {
+                                // Suggestion mode: show words only
+                                const searchString = raw.trim();
+                                Dictionary.search(searchString);
+                                return (Dictionary.results || []).map(entry => ({
+                                    name: `${entry.word}`,
+                                    clickActionName: Translation.tr("Copy word"),
+                                    type: Translation.tr("Dictionary"),
+                                    materialSymbol: 'menu_book',
+                                    actions: [
+                                        { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = entry.word },
+                                    ],
+                                    execute: () => { Quickshell.clipboardText = entry.word; }
+                                })).filter(Boolean);
+                            } else {
+                                // Details mode: d <word>!flags
+                                const word = raw.slice(0, exclIdx).trim();
+                                const flags = raw.slice(exclIdx + 1).trim();
+                                if (word.length === 0) return [];
+                                Dictionary.getDetails(word);
+
+                                function wrapLines(txt, width) {
+                                    const out = [];
+                                    if (!txt) return out;
+                                    let s = txt.replace(/\s+/g, ' ').trim();
+                                    while (s.length > width) {
+                                        let br = s.lastIndexOf(' ', width);
+                                        if (br <= 0) br = width;
+                                        out.push(s.slice(0, br));
+                                        s = s.slice(br).trim();
+                                    }
+                                    if (s.length) out.push(s);
+                                    return out;
+                                }
+
+                                const det = Dictionary.details || { word: word, definition: "", pos: "", pronunciation: "", fullText: "" };
+                                const actionsCommon = [
+                                    { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
+                                    { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition || det.fullText },
+                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, det.definition || det.fullText || Translation.tr("No definition"), "-a", "Shell"]) }
+                                ];
+
+                                if (flags.includes('d')) {
+                                    // Definition-only view; multi-row if long
+                                    const lines = wrapLines(det.definition || det.fullText, 80);
+                                    if (lines.length === 0) return [];
+                                    return lines.map((line, idx) => ({
+                                        name: line,
+                                        clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
+                                        type: idx === 0 ? Translation.tr("Definition") : "",
+                                        materialSymbol: 'menu_book',
+                                        actions: idx === 0 ? actionsCommon : [],
+                                        execute: () => { Quickshell.clipboardText = det.definition || det.fullText; }
+                                    }));
+                                }
+
+                                // General detail menu
+                                const out = [];
+                                out.push({
+                                    name: det.word || word,
+                                    clickActionName: Translation.tr("Copy word"),
+                                    type: Translation.tr("Dictionary"),
+                                    materialSymbol: 'menu_book',
+                                    actions: actionsCommon,
+                                    execute: () => { Quickshell.clipboardText = det.word || word; }
+                                });
+                                if (det.pronunciation) {
+                                    out.push({
+                                        name: Translation.tr("Pronunciation: %1").arg(det.pronunciation),
+                                        clickActionName: Translation.tr("Copy"),
+                                        type: Translation.tr("Pronunciation"),
+                                        materialSymbol: 'record_voice_over',
+                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation } ],
+                                        execute: () => { Quickshell.clipboardText = det.pronunciation; }
+                                    });
+                                }
+                                if (det.pos) {
+                                    out.push({
+                                        name: Translation.tr("Part of speech: %1").arg(det.pos),
+                                        clickActionName: Translation.tr("Copy"),
+                                        type: Translation.tr("Part of speech"),
+                                        materialSymbol: 'category',
+                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pos } ],
+                                        execute: () => { Quickshell.clipboardText = det.pos; }
+                                    });
+                                }
+                                const defLines = wrapLines(det.definition || det.fullText, 80);
+                                defLines.forEach((line, idx) => {
+                                    out.push({
+                                        name: line,
+                                        clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
+                                        type: idx === 0 ? Translation.tr("Definition") : "",
+                                        materialSymbol: 'menu_book',
+                                        actions: idx === 0 ? actionsCommon : [],
+                                        execute: () => { Quickshell.clipboardText = det.definition || det.fullText; }
+                                    });
+                                });
+                                return out;
+                            }
+                        }
+                        else if (root.searchingText.startsWith('ud ')) {
+                            // Urban Dictionary
+                            const raw = root.searchingText.slice(3);
+                            const exclIdx = raw.indexOf('!');
+                            if (exclIdx === -1) {
+                                // Suggestion mode: list of words only
+                                const searchString = raw.trim();
+                                UrbanDictionary.search(searchString);
+                                return (UrbanDictionary.results || []).map(entry => ({
+                                    name: `${entry.word}`,
+                                    clickActionName: Translation.tr("Copy word"),
+                                    type: Translation.tr("Urban Dictionary"),
+                                    materialSymbol: 'forum',
+                                    actions: [
+                                        { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = entry.word },
+                                    ],
+                                    execute: () => { Quickshell.clipboardText = entry.word; }
+                                }));
+                            } else {
+                                // Details mode: show definition across multiple rows
+                                const word = raw.slice(0, exclIdx).trim();
+                                if (word.length === 0) return [];
+                                UrbanDictionary.getDetails(word);
+                                function wrapLines(txt, width) {
+                                    const out = [];
+                                    if (!txt) return out;
+                                    let s = txt.replace(/\s+/g, ' ').trim();
+                                    while (s.length > width) {
+                                        let br = s.lastIndexOf(' ', width);
+                                        if (br <= 0) br = width;
+                                        out.push(s.slice(0, br));
+                                        s = s.slice(br).trim();
+                                    }
+                                    if (s.length) out.push(s);
+                                    return out;
+                                }
+                                const det = UrbanDictionary.details || { word: word, definition: "" };
+                                const actionsCommon = [
+                                    { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
+                                    { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition },
+                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, det.definition || Translation.tr("No definition"), "-a", "Shell"]) }
+                                ];
+                                const lines = wrapLines(det.definition, 80);
+                                if (lines.length === 0) return [];
+                                return lines.map((line, idx) => ({
+                                    name: line,
+                                    clickActionName: idx === 0 ? Translation.tr("Copy definition") : "",
+                                    type: idx === 0 ? Translation.tr("Urban Dictionary") : "",
+                                    materialSymbol: 'forum',
+                                    actions: idx === 0 ? actionsCommon : [],
+                                    execute: () => { Quickshell.clipboardText = det.definition; }
+                                }));
+                            }
+                        }
 
                         ////////////////// Init ///////////////////
                         nonAppResultsTimer.restart();
@@ -456,7 +616,22 @@ Item { // Wrapper
                     anchors.left: parent?.left
                     anchors.right: parent?.right
                     entry: modelData
-                    query: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? root.searchingText.slice(Config.options.search.prefix.clipboard.length) : root.searchingText
+                    query: {
+                        let q = root.searchingText;
+                        if (q.startsWith(Config.options.search.prefix.clipboard)) q = q.slice(Config.options.search.prefix.clipboard.length);
+                        else if (q.startsWith(Config.options.search.prefix.emojis)) q = q.slice(Config.options.search.prefix.emojis.length);
+                        else if (q.startsWith('d ')) {
+                            q = q.slice(2);
+                            const i = q.indexOf('!');
+                            if (i !== -1) q = q.slice(0, i);
+                        }
+                        else if (q.startsWith('ud ')) {
+                            q = q.slice(3);
+                            const i = q.indexOf('!');
+                            if (i !== -1) q = q.slice(0, i);
+                        }
+                        q
+                    }
                 }
             }
         }

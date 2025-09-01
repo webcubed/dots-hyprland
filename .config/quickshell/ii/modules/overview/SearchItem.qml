@@ -81,7 +81,11 @@ RippleButton {
         return matches ? matches : [];
     }
     
-    PointingHandInteraction {}
+    // Keep pointer consistent over the entire clickable row
+    PointingHandInteraction {
+        cursorShape: Qt.PointingHandCursor
+        enabled: true
+    }
 
     background {
         anchors.fill: root
@@ -212,15 +216,18 @@ RippleButton {
             }
         }
 
-        // Action text
+        // Action text (reserve width always, fade in on hover)
         StyledText {
-            Layout.fillWidth: false
-            visible: (root.hovered || root.focus)
             id: clickAction
+            Layout.fillWidth: false
             font.pixelSize: Appearance.font.pixelSize.normal
             color: Appearance.colors.colSubtext
             horizontalAlignment: Text.AlignRight
             text: root.itemClickActionName
+            opacity: (root.hovered || root.focus) ? 1 : 0
+            // Reserve space even when hidden to avoid layout thrash
+            Layout.minimumWidth: implicitWidth
+            Layout.preferredWidth: implicitWidth
         }
 
         RowLayout {
@@ -241,6 +248,9 @@ RippleButton {
                     colBackgroundHover: Appearance.colors.colSecondaryContainerHover
                     colRipple: Appearance.colors.colSecondaryContainerActive
 
+                    // Explicit pointer for small buttons to avoid
+                    // inheriting any text cursor from children
+                    PointingHandInteraction { cursorShape: Qt.PointingHandCursor }
                     contentItem: Item {
                         id: actionContentItem
                         anchors.centerIn: parent
