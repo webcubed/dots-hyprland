@@ -21,7 +21,7 @@ Singleton {
     property string defaultDb: "wn" // Prefer WordNet for concise defs
     property string _lastTerm: ""
     // Details for a selected word
-    property var details: ({ word: "", pos: "", definition: "", pronunciation: "", fullText: "" })
+    property var details: ({ word: "", pos: "", definition: "", pronunciation: "", audioUrl: "", fullText: "" })
     property string _lastDetailWord: ""
     property bool enableApiPronunciationFallback: true
 
@@ -143,7 +143,7 @@ Singleton {
         const script = `dict -d ${root.defaultDb} -- '${W}' 2>/dev/null || true`;
         detailsFetcher.running = false;
         detailsFetcher.command = ["bash", "-lc", script];
-        detailsFetcher.running = true;
+    detailsFetcher.running = true;
         // Also fetch pronunciation from GCIDE (if available)
         pronFetcher.running = false;
         pronFetcher.command = ["bash", "-lc", `dict -d gcide -- '${W}' 2>/dev/null || true`];
@@ -210,6 +210,7 @@ Singleton {
                     pos: parsed.pos,
                     definition: parsed.definition,
                     pronunciation: prevPron || root.parsePronunciation(raw),
+                    audioUrl: root.details.word === root._lastDetailWord ? (root.details.audioUrl || "") : "",
                     fullText: raw
                 });
             }
@@ -229,6 +230,7 @@ Singleton {
                     pos: root.details.pos,
                     definition: root.details.definition,
                     pronunciation: pron,
+                    audioUrl: root.details.audioUrl,
                     fullText: root.details.fullText
                 });
             }
@@ -246,29 +248,58 @@ Singleton {
                     if (!Array.isArray(arr) || arr.length === 0) return;
                     // Find first phonetic text
                     let phon = "";
+                    let audio = "";
                     for (let i = 0; i < arr.length && !phon; i++) {
                         const e = arr[i];
                         const ps = e?.phonetics || [];
                         for (let j = 0; j < ps.length; j++) {
                             const t = (ps[j]?.text || '').trim();
-                            if (t) { phon = t; break; }
+                            const a = (ps[j]?.audio || '').trim();
+                            if (t && !phon) phon = t;
+                            if (a && !audio) audio = a;
+                            if (phon && audio) break;
                         }
                     }
                     if (!phon) return;
                     if (root.details.word !== root._lastDetailWord) return; // stale
                     // Only apply if we still don't have a pronunciation
-                    if (!root.details.pronunciation) {
+                    if (!root.details.pronunciation || !root.details.audioUrl) {
                         root.details = ({
                             word: root.details.word,
                             pos: root.details.pos,
                             definition: root.details.definition,
-                            pronunciation: phon,
+                            pronunciation: root.details.pronunciation || phon,
+                            audioUrl: root.details.audioUrl || audio,
                             fullText: root.details.fullText
                         });
                     }
                 } catch (e) {
                     // ignore
                 }
+            }
+        }
+    }
+
+    function playAudio(url) {
+        if (!url || url.trim().length === 0) return;
+        const u = StringUtils.shellSingleQuoteEscape(url);
+        const cmd = `((command -v mpv >/dev/null 2>&1 && mpv --no-video --really-quiet ${u}) || \
+                     (command -v ffplay >/dev/null 2>&1 && ffplay -nodisp -autoexit -loglevel error ${u}) || \
+                     (tmp=$(mktemp --suffix=.mp3); curl -sL ${u} -o "$tmp" && \
+                        ((command -v mpv >/dev/null 2>&1 && mpv --no-video --really-quiet "$tmp") || \
+                         (command -v ffplay >/dev/null 2>&1 && ffplay -nodisp -autoexit -loglevel error "$tmp") || \
+                         (command -v paplay >/dev/null 2>&1 && paplay "$tmp")); rm -f "$tmp")) >/dev/null 2>&1 &`;
+        Quickshell.execDetached(["bash", "-lc", cmd]);
+    }
+
+    function playPronunciation() {
+        if (root.details?.audioUrl && root.details.audioUrl.length > 0) {
+            playAudio(root.details.audioUrl);
+        } else {
+            // No URL; try API fetch for current detail word again as a best effort
+            if (root.enableApiPronunciationFallback && root._lastDetailWord) {
+                const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(root._lastDetailWord)}`;
+                Quickshell.execDetached(["bash", "-lc", `curl -s ${StringUtils.shellSingleQuoteEscape(url)} | jq -r '.[0].phonetics[]?.audio // empty' | head -n1`]);
             }
         }
     }

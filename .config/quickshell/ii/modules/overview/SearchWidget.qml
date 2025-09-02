@@ -9,9 +9,13 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import "."
 
 Item { // Wrapper
     id: root
+    // Ensure we can catch keystrokes for routing when the modal is open
+    // Don't steal focus from the modal; instead forward keys to it while open
+    Keys.forwardTo: defModal && defModal.open ? [defModal] : []
     readonly property string xdgConfigHome: Directories.config
     property string searchingText: ""
     property bool showResults: searchingText != ""
@@ -81,6 +85,41 @@ Item { // Wrapper
     function setSearchingText(text) {
         searchInput.text = text;
         root.searchingText = text;
+    }
+
+    // Open a floating modal (no copy/notify side-effects)
+    function showDefinition(word, definition, pos, pronunciation, pronounceCb) {
+        const def = definition || Translation.tr("No definition");
+        defModal.word = word || "";
+        defModal.definition = def;
+        defModal.pos = pos || "";
+        defModal.pronunciation = pronunciation || "";
+        defModal.onCopyWord = function () { Quickshell.clipboardText = word; };
+        defModal.onCopyDefinition = function () { Quickshell.clipboardText = def; };
+        defModal.onPronounce = pronounceCb || function () {};
+        // Place modal under or to the right of the search widget without overlapping it
+        const margin = 10;
+        const swx = searchWidgetContent.x;
+        const swy = searchWidgetContent.y;
+        const sww = searchWidgetContent.width;
+        const swh = searchWidgetContent.height;
+        // Try below
+        let px = swx;
+        let py = swy + swh + margin;
+        // If not enough vertical space, try to the right
+        const approxW = Math.min(root.width * 0.66, 900);
+        const approxH = Math.min(root.height * 0.66, 650);
+        if (py + approxH > root.height) {
+            px = swx + sww + margin;
+            py = Math.max(margin, swy);
+        }
+        // Clamp inside
+        px = Math.max(margin, Math.min(px, root.width - approxW - margin));
+        py = Math.max(margin, Math.min(py, root.height - approxH - margin));
+        defModal.setPosition(px, py);
+        defModal.open = true;
+        // Defer focus to the modal to avoid racing with overview focus
+        if (defModal.focusLater) defModal.focusLater();
     }
 
     property var searchActions: [
@@ -172,7 +211,19 @@ Item { // Wrapper
         }
     }
 
+    Keys.priority: Keys.BeforeItem
     Keys.onPressed: event => {
+        // If the definition modal is open, route shortcuts here so they work even if focus didn't land on the modal
+        if (defModal && defModal.open) {
+            const txt = event.text ? event.text.toLowerCase() : '';
+            const k = event.key;
+            const noMods = (event.modifiers === Qt.NoModifier);
+            if (k === Qt.Key_Escape || (noMods && (txt === 'x' || k === Qt.Key_X))) { defModal.closeModal?.(); event.accepted = true; return; }
+            if (noMods && (txt === 'w' || k === Qt.Key_W)) { defModal.onCopyWord?.(); event.accepted = true; return; }
+            if (noMods && (txt === 'd' || k === Qt.Key_D)) { defModal.onCopyDefinition?.(); event.accepted = true; return; }
+            if (noMods && (txt === 's' || k === Qt.Key_S)) { defModal.onPronounce?.(); event.accepted = true; return; }
+            if (noMods && (txt === 'p' || k === Qt.Key_P)) { defModal.persist = !defModal.persist; if (defModal.persist) { try { GlobalStates.overviewOpen = false; } catch(_) {} } event.accepted = true; return; }
+        }
         // Prevent Esc and Backspace from registering
         if (event.key === Qt.Key_Escape)
             return;
@@ -264,7 +315,8 @@ Item { // Wrapper
                 TextField { // Search box
                     id: searchInput
 
-                    focus: GlobalStates.overviewOpen
+                    // Don't hold focus while the definition modal is open, so shortcuts route correctly
+                    focus: GlobalStates.overviewOpen && !defModal.open
                     Layout.rightMargin: 15
                     padding: 15
                     renderType: Text.NativeRendering
@@ -290,7 +342,11 @@ Item { // Wrapper
                         }
                     }
 
-                    onTextChanged: root.searchingText = text
+                    onTextChanged: {
+                        root.searchingText = text
+                        // Close definition modal when leaving dictionary/UD detail context (unless persisted)
+                        if (!defModal.persist && !text.startsWith('d ') && !text.startsWith('ud ')) defModal.open = false;
+                    }
 
                     onAccepted: {
                         if (appResults.count > 0) {
@@ -446,7 +502,7 @@ Item { // Wrapper
                                 const actionsCommon = [
                                     { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
                                     { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition || det.fullText },
-                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, det.definition || det.fullText || Translation.tr("No definition"), "-a", "Shell"]) }
+                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => root.showDefinition(det.word || word, det.definition || det.fullText || Translation.tr("No definition"), det.pos, det.pronunciation, () => Dictionary.playPronunciation()) }
                                 ];
 
                                 if (flags.includes('d')) {
@@ -454,12 +510,12 @@ Item { // Wrapper
                                     const text = det.definition || det.fullText || Translation.tr("No definition");
                                     const items = [{
                                         name: text,
-                                        clickActionName: Translation.tr("Copy definition"),
+                                        clickActionName: Translation.tr("Show"),
                                         type: Translation.tr("Definition"),
                                         materialSymbol: 'menu_book',
                                         keepOpen: true,
                                         actions: actionsCommon,
-                                        execute: () => { root.setSearchingText(`d ${word}!d`); }
+                                        execute: () => { root.showDefinition(det.word || word, text, det.pos, det.pronunciation, () => Dictionary.playPronunciation()); }
                                     }];
                                     root._dictDetailKey = dkey;
                                     root._dictDetailItems = items;
@@ -467,16 +523,19 @@ Item { // Wrapper
                                 }
 
                                 if (flags.includes('p')) {
-                                    // Pronunciation-only view; single entry
+                                    // Pronunciation-only view; single entry, Enter plays audio
                                     const text = det.pronunciation || Translation.tr("No pronunciation found");
                                     const items = [{
                                         name: text,
-                                        clickActionName: Translation.tr("Copy pronunciation"),
+                                        clickActionName: Translation.tr("Play pronunciation"),
                                         type: Translation.tr("Pronunciation"),
                                         materialSymbol: 'record_voice_over',
                                         keepOpen: true,
-                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation } ],
-                                        execute: () => { root.setSearchingText(`d ${word}!p`); }
+                                        actions: [ 
+                                            { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation },
+                                            { name: Translation.tr("Play"), materialIcon: 'volume_up', execute: () => Dictionary.playPronunciation() }
+                                        ],
+                                        execute: () => { Dictionary.playPronunciation(); root.setSearchingText(`d ${word}!p`); }
                                     }];
                                     root._dictDetailKey = dkey;
                                     root._dictDetailItems = items;
@@ -514,12 +573,15 @@ Item { // Wrapper
                                 if (det.pronunciation) {
                                     out.push({
                                         name: Translation.tr("Pronunciation: %1").arg(det.pronunciation),
-                                        clickActionName: Translation.tr("Show"),
+                                        clickActionName: Translation.tr("Play"),
                                         type: Translation.tr("Pronunciation"),
                                         materialSymbol: 'record_voice_over',
                                         keepOpen: true,
-                                        actions: [ { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation } ],
-                                        execute: () => { root.setSearchingText(`d ${word}!p`); }
+                                        actions: [ 
+                                            { name: Translation.tr("Copy"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.pronunciation },
+                                            { name: Translation.tr("Play"), materialIcon: 'volume_up', execute: () => Dictionary.playPronunciation() }
+                                        ],
+                                        execute: () => { Dictionary.playPronunciation(); root.setSearchingText(`d ${word}!p`); }
                                     });
                                 }
                                 if (det.pos) {
@@ -590,7 +652,7 @@ Item { // Wrapper
                                 const actionsCommon = [
                                     { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
                                     { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.definition },
-                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, det.definition || Translation.tr("No definition"), "-a", "Shell"]) }
+                                    { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => root.showDefinition(det.word || word, det.definition || Translation.tr("No definition"), "", "", () => {}) }
                                 ];
                                 const dkey = `ud:detail:${word}!${flags}:${(det.definitions||[]).length}:${(det.definition||'').length}`;
                                 if (dkey === root._udDetailKey) return root._udDetailItems;
@@ -598,16 +660,22 @@ Item { // Wrapper
                                 const defs = (det.definitions && det.definitions.length) ? det.definitions : (det.definition ? [det.definition] : []);
                                 const items = defs.map(def => ({
                                     name: def,
-                                    clickActionName: Translation.tr("Show definition"),
+                                    clickActionName: flags.includes('d') ? Translation.tr("Show") : Translation.tr("Show definition"),
                                     type: Translation.tr("Urban Dictionary"),
                                     materialSymbol: 'forum',
                                     keepOpen: true,
                                     actions: [
                                         { name: Translation.tr("Copy word"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = det.word },
                                         { name: Translation.tr("Copy definition"), materialIcon: 'content_copy', execute: () => Quickshell.clipboardText = def },
-                                        { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => Quickshell.execDetached(["notify-send", det.word || word, def || Translation.tr("No definition"), "-a", "Shell"]) }
+                                        { name: Translation.tr("Show full"), materialIcon: 'article', execute: () => root.showDefinition(det.word || word, def || Translation.tr("No definition"), "", "", () => {}) }
                                     ],
-                                    execute: () => { root.setSearchingText(`ud ${word}!d`); }
+                                    execute: () => {
+                                        if (flags.includes('d')) {
+                                            root.showDefinition(det.word || word, def, "", "", () => {});
+                                        } else {
+                                            root.setSearchingText(`ud ${word}!d`);
+                                        }
+                                    }
                                 }));
                                 if (items.length === 0) return [];
                                 root._udDetailKey = dkey;
@@ -734,6 +802,27 @@ Item { // Wrapper
                     }
                 }
             }
+        }
+    }
+
+    // Floating definition modal overlay
+    DefinitionModal {
+        id: defModal
+        anchors.fill: parent
+        visible: open
+        onClose: {
+            // Refocus search input and ensure overview keyboard flow resumes
+            try { searchInput.forceActiveFocus(); } catch(_) {}
+        }
+    }
+
+    // Shortcuts handled inside DefinitionModal via application scope
+
+    // Auto-close modal when overview closes, unless persisted
+    Connections {
+        target: GlobalStates
+        function onOverviewOpenChanged() {
+            if (!GlobalStates.overviewOpen && defModal.open && !defModal.persist) defModal.open = false;
         }
     }
 }
