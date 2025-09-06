@@ -91,6 +91,11 @@ Singleton {
                     property bool enableAppsAndShell: true
                     property bool enableQtApps: true
                     property bool enableTerminal: true
+                    property JsonObject terminalGenerationProps: JsonObject {
+                        property real harmony: 0.8
+                        property real harmonizeThreshold: 100
+                        property real termFgBoost: 0.35
+                    }
                 }
                 property JsonObject palette: JsonObject {
                     property string type: "auto" // Allowed: auto, scheme-content, scheme-expressive, scheme-fidelity, scheme-fruit-salad, scheme-monochrome, scheme-neutral, scheme-rainbow, scheme-tonal-spot
@@ -101,7 +106,7 @@ Singleton {
                 // Values in %
                 property JsonObject protection: JsonObject {
                     // Prevent sudden bangs
-                    property bool enable: true
+                    property bool enable: false
                     property real maxAllowedIncrease: 10
                     property real maxAllowed: 99
                 }
@@ -124,6 +129,7 @@ Singleton {
                 property string thumbnailPath: ""
                 property JsonObject parallax: JsonObject {
                     property bool vertical: false
+                    property bool autoVertical: false
                     property bool enableWorkspace: true
                     property real workspaceZoom: 1.07 // Relative to your screen, not wallpaper size
                     property bool enableSidebar: true
@@ -152,7 +158,7 @@ Singleton {
                 property bool showDynamicIslandOnLockScreen: false
                 property JsonObject resources: JsonObject {
                     property bool alwaysShowSwap: true
-                    property bool alwaysShowCpu: false
+                    property bool alwaysShowCpu: true
                     property int memoryWarningThreshold: 95
                     property int swapWarningThreshold: 85
                     property int cpuWarningThreshold: 90

@@ -12,6 +12,7 @@ ContentPage {
     forceWidth: true
 
     ContentSection {
+        icon: "volume_up"
         title: Translation.tr("Audio")
 
         ConfigSwitch {
@@ -48,8 +49,11 @@ ContentPage {
             }
         }
     }
+
     ContentSection {
+        icon: "neurology"
         title: Translation.tr("AI")
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("System prompt")
@@ -64,6 +68,7 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "battery_android_full"
         title: Translation.tr("Battery")
 
         ConfigRow {
@@ -115,7 +120,9 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "cell_tower"
         title: Translation.tr("Networking")
+
         MaterialTextArea {
             Layout.fillWidth: true
             placeholderText: Translation.tr("User agent (for services that require it)")
@@ -232,7 +239,9 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "memory"
         title: Translation.tr("Resources")
+
         ConfigSpinBox {
             text: Translation.tr("Polling interval (ms)")
             value: Config.options.resources.updateInterval
@@ -246,6 +255,7 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "search"
         title: Translation.tr("Search")
 
         ConfigSwitch {
@@ -263,7 +273,6 @@ ContentPage {
             title: Translation.tr("Prefixes")
             ConfigRow {
                 uniform: true
-
                 MaterialTextArea {
                     Layout.fillWidth: true
                     placeholderText: Translation.tr("Action")
@@ -292,6 +301,37 @@ ContentPage {
                     }
                 }
             }
+
+            ConfigRow {
+                uniform: true
+                MaterialTextArea {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Math")
+                    text: Config.options.search.prefix.math
+                    wrapMode: TextEdit.Wrap
+                    onTextChanged: {
+                        Config.options.search.prefix.math = text;
+                    }
+                }
+                MaterialTextArea {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Shell command")
+                    text: Config.options.search.prefix.shellCommand
+                    wrapMode: TextEdit.Wrap
+                    onTextChanged: {
+                        Config.options.search.prefix.shellCommand = text;
+                    }
+                }
+                MaterialTextArea {
+                    Layout.fillWidth: true
+                    placeholderText: Translation.tr("Web search")
+                    text: Config.options.search.prefix.webSearch
+                    wrapMode: TextEdit.Wrap
+                    onTextChanged: {
+                        Config.options.search.prefix.webSearch = text;
+                    }
+                }
+            }
         }
         ContentSubsection {
             title: Translation.tr("Web search")
@@ -308,6 +348,7 @@ ContentPage {
     }
 
     ContentSection {
+        icon: "nest_clock_farsight_analog"
         title: Translation.tr("Time")
 
         ContentSubsection {
@@ -316,7 +357,6 @@ ContentPage {
 
             ConfigSelectionArray {
                 currentValue: Config.options.time.format
-                configOptionName: "time.format"
                 onSelected: newValue => {
                     if (newValue === "hh:mm") {
                         Quickshell.execDetached(["bash", "-c", `sed -i 's/\\TIME12\\b/TIME/' '${FileUtils.trimFileProtocol(Directories.config)}/hypr/hyprlock.conf'`]);

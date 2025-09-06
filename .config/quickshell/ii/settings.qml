@@ -24,9 +24,15 @@ ApplicationWindow {
     property bool showNextTime: false
     property var pages: [
         {
-            name: Translation.tr("Style"),
-            icon: "palette",
-            component: "modules/settings/StyleConfig.qml"
+            name: Translation.tr("Quick"),
+            icon: "instant_mix",
+            component: "modules/settings/QuickConfig.qml"
+        },
+        {
+            name: Translation.tr("Bar"),
+            icon: "toast",
+            iconRotation: 180,
+            component: "modules/settings/BarConfig.qml"
         },
         {
             name: Translation.tr("Interface"),
@@ -181,6 +187,7 @@ ApplicationWindow {
                                 onClicked: root.currentPage = index;
                                 expanded: navRail.expanded
                                 buttonIcon: modelData.icon
+                                buttonIconRotation: modelData.iconRotation || 0
                                 buttonText: modelData.name
                                 showToggledHighlight: false
                             }
@@ -204,7 +211,9 @@ ApplicationWindow {
                     opacity: 1.0
 
                     active: Config.ready
-                    source: root.pages[0].component
+                    Component.onCompleted: {
+                        source = root.pages[0].component
+                    }
 
                     Connections {
                         target: root
