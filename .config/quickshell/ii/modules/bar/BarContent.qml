@@ -305,7 +305,7 @@ Item { // Bar content region
                 implicitWidth: indicatorsRowLayout.implicitWidth + 10 * 2 + 20
                 implicitHeight: indicatorsRowLayout.implicitHeight + 5 * 2
 
-                buttonRadius: Appearance.rounding.full
+                buttonRadius: Appearance.rounding.howthingsshouldbe
                 colBackground: barRightSideMouseArea.hovered ? Appearance.colors.colLayer1Hover : ColorUtils.transparentize(Appearance.colors.colLayer1Hover, 1)
                 colBackgroundHover: Appearance.colors.colLayer1Hover
                 colRipple: Appearance.colors.colLayer1Active

@@ -13,7 +13,7 @@ RippleButton {
 
     implicitWidth: distroIcon.width + buttonPadding * 2
     implicitHeight: distroIcon.height + buttonPadding * 2
-    buttonRadius: Appearance.rounding.full
+    buttonRadius: Appearance.rounding.howthingsshouldbe
     colBackgroundHover: Appearance.colors.colLayer1Hover
     colRipple: Appearance.colors.colLayer1Active
     colBackgroundToggled: "#24273a"
@@ -81,7 +81,7 @@ RippleButton {
             visible: opacity > 0
             implicitWidth: 8
             implicitHeight: 8
-            radius: Appearance.rounding.full
+            radius: Appearance.rounding.howthingsshouldbe
             color: Appearance.colors.colTertiary
 
             anchors {
