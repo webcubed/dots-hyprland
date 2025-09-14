@@ -1467,7 +1467,7 @@ Item {
 					Layout.preferredHeight: 18
 					padding: 0
 					onPressed: MprisController.activePlayer.togglePlaying()
-					buttonRadius: MprisController.activePlayer?.isPlaying ? Appearance.rounding.normal : 9
+					buttonRadius: MprisController.activePlayer?.isPlaying ? Appearance.rounding.howthingsshouldbe : 9
 					colBackground: Appearance.colors.colPrimary
 					colBackgroundHover: Appearance.colors.colPrimaryHover
 					colRipple: Appearance.colors.colPrimaryActive
