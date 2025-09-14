@@ -3,6 +3,7 @@ pragma Singleton
 import qs.modules.common
 import qs.modules.common.functions
 import Quickshell
+import "./" as Services
 
 /**
  * - Eases fuzzy searching for applications by name
@@ -20,7 +21,7 @@ Singleton {
         "wps": "wps-office2019-kprometheus",
         "wpsoffice": "wps-office2019-kprometheus",
         "footclient": "foot",
-    })
+        })
     property var regexSubstitutions: [
         {
             "regex": /^steam_app_(\d+)$/,
@@ -37,7 +38,7 @@ Singleton {
         {
             "regex": /gcr.prompter/,
             "replace": "system-lock-screen"
-        }
+        },
     ]
 
     readonly property list<DesktopEntry> list: Array.from(DesktopEntries.applications.values)
@@ -88,6 +89,10 @@ Singleton {
 
     function guessIcon(str) {
         if (!str || str.length == 0) return "image-missing";
+
+        // Sanitize obvious launcher-added suffixes / queries first (non-invasive)
+        const original = str;
+        str = Services.IconHelper.sanitize(str) ?? str;
 
         // Quickshell's desktop entry lookup
         const entry = DesktopEntries.heuristicLookup(str);
@@ -144,7 +149,7 @@ Singleton {
         }
 
 
-        // Give up
-        return str;
+        // Give up: prefer sanitized version that might still resolve later, otherwise original
+        return str || original;
     }
 }

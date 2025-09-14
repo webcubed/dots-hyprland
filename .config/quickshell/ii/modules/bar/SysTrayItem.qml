@@ -4,6 +4,7 @@ import qs.modules.common.functions
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
+import "../../services" as Services
 import Quickshell.Widgets
 import Qt5Compat.GraphicalEffects
 
@@ -48,13 +49,59 @@ MouseArea {
         anchor.edges: Config.options.bar.bottom ? (Edges.Top | Edges.Left) : (Edges.Bottom | Edges.Right)
     }
 
-    IconImage {
+    Item {
         id: trayIcon
-        visible: !Config.options.bar.tray.monochromeIcons
-        source: root.item.icon
         anchors.centerIn: parent
         width: parent.width
         height: parent.height
+        visible: !Config.options.bar.tray.monochromeIcons
+
+    // Raw icon string from tray (plain name, image://icon/<name>, spotify-linux-32?path=...)
+    property string rawIcon: root.item.icon
+    // Extract provider name if image scheme used
+    property string schemeName: rawIcon && rawIcon.startsWith('image://icon/') ? rawIcon.substring('image://icon/'.length) : ''
+    // Only normalize (strip scheme) for spotify pattern; for others keep full URI so Quickshell can fetch it
+    property bool treatAsSpotify: schemeName.length > 0 && schemeName.toLowerCase().startsWith('spotify')
+    property string normalizedIcon: treatAsSpotify ? schemeName : rawIcon
+    property string initialResolved: Services.IconHelper.resolve(normalizedIcon)
+        property bool useFileFallback: initialResolved === '__SPOTIFY_FILE_FALLBACK__'
+        property var fileCandidates: useFileFallback ? Services.IconHelper.getSpotifyFileCandidates(root.item.icon) : []
+        property int candidateIndex: 0
+        property string currentSource: !useFileFallback ? initialResolved : (fileCandidates.length > 0 ? fileCandidates[0] : '')
+
+        function tryNextCandidate() {
+            if (!useFileFallback) return;
+            candidateIndex++;
+            if (candidateIndex < fileCandidates.length) {
+                currentSource = fileCandidates[candidateIndex];
+                console.log('[SysTrayItem] spotify trying candidate', currentSource);
+            } else {
+                // Final fallback to themed generic name to surface something (will likely be missing icon)
+                currentSource = 'spotify';
+                console.log('[SysTrayItem] spotify exhausted file candidates; fallback to themed name "spotify"');
+            }
+        }
+
+        IconImage {
+            id: themedIcon
+            anchors.fill: parent
+            visible: !trayIcon.useFileFallback
+            // If not treating as spotify and original was an image provider, keep original rawIcon
+            source: (!trayIcon.treatAsSpotify && trayIcon.rawIcon && trayIcon.rawIcon.startsWith('image://icon/')) ? trayIcon.rawIcon : trayIcon.currentSource
+            Component.onCompleted: if (source && typeof source === 'string' && source.toLowerCase().indexOf('spotify') !== -1) console.log('[SysTrayItem] spotify themed source =', source)
+        }
+        Image {
+            id: fileIcon
+            anchors.fill: parent
+            visible: trayIcon.useFileFallback
+            source: trayIcon.currentSource.startsWith('file://') ? trayIcon.currentSource : (trayIcon.currentSource ? 'file://' + trayIcon.currentSource : '')
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            onStatusChanged: {
+                if (status === Image.Error) trayIcon.tryNextCandidate();
+                if (status === Image.Ready) console.log('[SysTrayItem] spotify loaded', source)
+            }
+        }
     }
 
     Loader {
