@@ -30,7 +30,7 @@ QuickToggleButton {
     contentItem: Item {
         anchors.centerIn: parent
         width: 20; height: 20
-        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+    readonly property bool usePlumpy: true
 
         PlumpyIcon {
             id: plumpy

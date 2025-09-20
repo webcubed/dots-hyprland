@@ -35,7 +35,7 @@ Item { // Player instance
 
         contentItem: Item {
             anchors.fill: parent
-            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+            readonly property bool usePlumpy: true
             PlumpyIcon { id: trackBtnPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: iconName === 'skip_previous' ? 'previous' : (iconName === 'skip_next' ? 'skip' : 'tune'); primaryColor: blendedColors.colOnSecondaryContainer }
             MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !trackBtnPlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: blendedColors.colOnSecondaryContainer; text: iconName }
         }
@@ -292,7 +292,7 @@ Item { // Player instance
 
                         contentItem: Item {
                             anchors.fill: parent
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            readonly property bool usePlumpy: true
                             PlumpyIcon { id: playPausePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: playerController.player?.isPlaying ? 'pause' : 'play'; primaryColor: playerController.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer }
                             MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !playPausePlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: playerController.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer; text: playerController.player?.isPlaying ? "pause" : "play_arrow" }
                         }

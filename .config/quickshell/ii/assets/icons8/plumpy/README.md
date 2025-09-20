@@ -2,78 +2,84 @@
 
 Put downloaded SVGs here. Use the exact filenames below so QML can load them directly.
 
-Provided icons (detected in this repo):
+## Provided icons (present in this repo)
 
--   airplane.svg, apps.svg, bell.svg, bell-ringing.svg
+-   airplane.svg, apps.svg
+-   arrow-right.svg, chevron-down.svg, chevron-up.svg, chevron-left.svg, chevron-right.svg, next-page.svg, rightarrow-duotone.svg
+-   battery.svg, bolt.svg, power.svg, restart.svg
+-   bell.svg, bell-ringing.svg
 -   bluetooth.svg, bluetooth-connected.svg
 -   calendar.svg
--   chevron-down.svg, chevron-up.svg, chevron-left.svg, chevron-right.svg
+-   chat.svg, speech.svg
+-   chemistry.svg, circle-check.svg, check.svg, x.svg
+-   clipboard-approve.svg, copy.svg
 -   coffee.svg
--   cpu.svg, memory-slot.svg
--   gamepad.svg
--   math.svg
+-   cpu.svg, memory-slot.svg, piechart.svg
+-   gamepad.svg, headphones.svg, image.svg, phone.svg, plus.svg
+-   keyboard.svg, lan.svg, lock.svg
+-   math.svg, terminal.svg, todo.svg, toolbox.svg, translation.svg
 -   mic.svg, mic-mute.svg
--   night-light.svg
+-   moon.svg, night-light.svg, sun.svg, sunrise.svg, sunset.svg
 -   pause.svg, play.svg, previous.svg, skip.svg, snooze.svg
--   power.svg, restart.svg
--   rain.svg, wind.svg, sun.svg, sunrise.svg, sunset.svg
--   search.svg, searchbar.svg, settings.svg
--   speaker-mute.svg
--   terminal.svg, todo.svg, toolbox.svg, translation.svg, tune.svg, visibility.svg
+-   rain.svg, wind.svg, thermometer.svg, flake.svg, snow-1flake.svg, snow-many.svg, cloud.svg, cloudy.svg, fog.svg, night-fog.svg, sun-fog.svg
+-   search.svg, searchbar.svg, settings.svg, tune.svg, tune-vertical.svg, visibility.svg, clock.svg
 -   wifi.svg, wifi-off.svg, wifi-0.svg, wifi-1.svg, wifi-2.svg, wifi-3.svg, wifi-4.svg
--   lan.svg, lock.svg, check.svg
--   moon.svg, x.svg, clipboard-approve.svg
+-   album.svg, pin.svg, icons8-music-note.svg, user.svg, speed-circle.svg, speed-science.svg
 
 We use these names directly in QML. If you add more, keep the same lowercase-dashed naming.
 
 ---
 
-Missing icons to download (for what’s already wired):
+## Coverage map
 
-Required for full coverage of current UI swaps
+Implemented (Plumpy used with Material fallback):
 
--   pin.svg — Dock pin toggle icon
-    -   Used in: modules/dock/Dock.qml (pin button)
+-   Bar indicators: speaker-mute.svg (volume), mic-mute.svg (mic), wifi-0..4.svg/wifi-off.svg/lan.svg (network), bolt.svg (battery), cpu.svg and memory-slot.svg (resources)
+-   Dynamic Island: icons8-music-note.svg (lyrics toggle), copy.svg (clipboard), clipboard-approve.svg (drop success)
+-   Media: previous.svg, play.svg, pause.svg, skip.svg; album.svg, icons8-music-note.svg; tune.svg and speed-science.svg in info popup; vertical media uses play/pause and icons8-music-note
+-   Weather: sun.svg, cloud.svg (cloud), cloudy.svg (partly cloudy), fog.svg (fog), rain.svg; location.svg in popup header; cards use sun.svg (UV), wind.svg (Wind), rain.svg (Precip), thermometer.svg (Humidity approx), visibility.svg, sunrise.svg, moon.svg; snow variants wired (flake.svg, snow-1flake.svg, snow-many.svg)
+-   Battery popup: battery.svg, bolt.svg; clock.svg for time-to-full/empty
+-   Scroll hints: chevron-up.svg, chevron-down.svg; light_mode → sun.svg
+-   Util buttons: image.svg (snip), toolbox.svg (picker), keyboard.svg, mic.svg/mic-mute.svg, sun.svg/moon.svg, bolt/settings/leaf
+-   Dock: apps.svg; x.svg for preview close; pin toggle falls back (pin.svg missing)
+-   Right sidebar: quick toggles (wifi\*, bluetooth, auto night light = night-light.svg, manual night light = moon.svg, gamepad, coffee, tune), Wi‑Fi list (lock.svg, check.svg), tabs (chemistry.svg, keyboard.svg, bell for Notifications), bottom group rail (calendar.svg, check.svg, clock.svg)
+-   Lock screen: check.svg, moon.svg, power.svg
+-   Overview (Search): math.svg, terminal.svg, tune.svg/translation.svg, check.svg, clipboard-approve.svg
+-   Notifications (default app glyph): calendar, chat, terminal, bell, bell-ringing, phone, headphones, image, mic/mic-off
 
-Highly recommended (right sidebar parity and navigation)
+Still using Material (needs assets or mapping):
 
-None (these are already included: chevron-left.svg, chevron-right.svg, lock.svg, check.svg, lan.svg)
-
-Optional (nice-to-have parity in info/popups/overlays)
-
--   bluetooth-disabled.svg — Explicit Bluetooth disabled variant
-    -   We currently reuse bluetooth.svg when disabled
--   music-note.svg — Media info header glyph
--   person.svg — Artist glyph in media popup
--   album.svg — Album glyph in media popup
--   speed.svg — Bitrate/quality glyph in media popup
--   tune.svg — Format/codec or settings glyph in media popup
--   schedule.svg — Duration/position glyph in media popup
-    -   Used in: modules/bar/MediaInfoPopup.qml
--   inventory.svg — Dynamic Island drop success glyph
-    -   Used in: modules/bar/DynamicIsland.qml (drop overlay)
--   bedtime.svg — Night Light manual (if you want a distinct manual icon)
--   night-sight-auto.svg — Night Light auto (if you want a distinct auto icon)
--   equalizer.svg or instant-mix.svg — EasyEffects icon (replace placeholder)
--   chat.svg — Overview: used when mapping forum label; falls back to Material if missing
-
-Notes
-
--   If you prefer different Plumpy names for the optional set, keep the same lowercase-dashed convention and tell me the mapping; I’ll wire them.
+-   Settings navigation icons: instant_mix, browse, toast, bottom_app_bar (no Plumpy equivalents yet)
 
 ---
 
-Quick reference – Network/Wi‑Fi mapping already wired:
+## Missing icons to download (to complete current wiring)
 
-Network/Wi‑Fi (Iconify-like strength mapping):
+Required for full coverage
 
--   wifi-0.svg → Signal 0 (off/very weak) [Icons8: “Signal Low” or base Wi‑Fi with 0 bars]
--   wifi-1.svg → Signal 1 bar
--   wifi-2.svg → Signal 2 bars
--   wifi-3.svg → Signal 3 bars
--   wifi-4.svg → Signal 4 bars (full)
--   wifi-off.svg → Wi‑Fi disabled (slash or crossed)
--   lan.svg → Ethernet (cable/lan)
+None (current mappings use user.svg for Artist and speed-science.svg for Speed)
+
+Nice-to-have / explicit variants
+
+-   equalizer.svg (or instant-mix.svg) — EasyEffects
+
+Notes
+
+-   If you prefer different Plumpy names, keep the same lowercase-dashed convention and share the mapping.
+
+---
+
+## Quick references
+
+Network/Wi‑Fi (strength mapping):
+
+-   wifi-0.svg → very weak/off
+-   wifi-1.svg → 1 bar
+-   wifi-2.svg → 2 bars
+-   wifi-3.svg → 3 bars
+-   wifi-4.svg → 4 bars (full)
+-   wifi-off.svg → Wi‑Fi disabled
+-   lan.svg → Ethernet
 -   airplane.svg → Airplane mode (optional)
 
 Bluetooth:
@@ -82,13 +88,13 @@ Bluetooth:
 -   bluetooth-connected.svg → Connected (optional)
 -   bluetooth-disabled.svg → Disabled (optional)
 
-Other quick toggles (single glyphs):
+Other quick toggles:
 
--   night-sight-auto.svg → Auto Night Light (optional)
--   bedtime.svg → Night Light manual (optional)
+-   night-sight-auto.svg → Auto night light (optional)
+-   bedtime.svg → Manual night light (optional)
 -   gamepad.svg → Game mode
 -   coffee.svg → Idle inhibitor
--   equalizer.svg or instant-mix.svg → EasyEffects (optional)
+-   equalizer.svg / instant-mix.svg → EasyEffects (optional)
 
 Header buttons (top of right sidebar):
 
@@ -96,31 +102,30 @@ Header buttons (top of right sidebar):
 -   settings.svg
 -   power.svg
 
-Dimensions:
+Dimensions
 
--   Canvas: 24x24 px (viewBox="0 0 24 24").
--   Stroke/fill scalable; keep centered. Duotone layers should be separate path elements for primary/secondary.
+-   Canvas: 24x24 (viewBox="0 0 24 24"). Keep centered; separate duotone layers.
 
-Coloring:
+Coloring
 
--   We recolor in QML with the shell palette. In quick toggles: on=tinted with Appearance.m3colors.m3onPrimary; off=tinted with Appearance.colors.colOnLayer1. In headers/buttons we use Appearance.colors.colOnLayer0. Set fills to currentColor or leave as black/gray.
-
-Notes:
-
--   Keep names lowercase with dashes as above.
--   If an exact Plumpy asset doesn’t exist, pick the closest Plumpy duotone.
+-   We tint in QML using the shell palette. Fills can be black/gray or currentColor.
 
 Night Light naming
 
--   Auto mode uses: night-light.svg (moon + stars)
--   Manual mode uses: moon.svg
+-   Auto: night-light.svg (moon + stars)
+-   Manual: moon.svg
 
-Fetching Wi‑Fi strengths automatically:
+Fetching Wi‑Fi strengths automatically
 
--   Use the helper script to pull Plumpy Wi‑Fi strength drawables from the Iconify repo and convert them to SVGs:
-    -   scripts/icons/fetch_iconify_wifi.sh
--   This writes wifi-1.svg .. wifi-4.svg and derives wifi-0.svg.
+-   Use the helper script to pull Plumpy Wi‑Fi strength drawables:
+-   scripts/icons/fetch_iconify_wifi.sh (writes wifi-1..4.svg and derives wifi-0.svg)
 
-Enable in UI:
+Enable in UI
 
--   Settings → Interface → Sidebars → “Use Icons8 Plumpy icons for quick toggles”.
+-   Settings → Interface → Sidebars → "Use Icons8 Plumpy icons for quick toggles".
+
+## How to add a missing icon
+
+1. Save the SVG named exactly as listed above into this folder (24×24 viewBox).
+2. Prefer simple paths; colors can be black/gray (we tint in QML).
+3. The UI loads new icons automatically; PlumpyIcon falls back to Material until the asset exists.

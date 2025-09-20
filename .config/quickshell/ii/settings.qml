@@ -216,7 +216,8 @@ ApplicationWindow {
                     anchors.fill: parent
                     opacity: 1.0
 
-                    active: Config.ready
+                    // Always keep loader active so pages render even before Config is ready
+                    active: true
                     onStatusChanged: {
                         console.log("Settings page loader status:", pageLoader.status, "source:", pageLoader.source)
                     }
@@ -227,7 +228,7 @@ ApplicationWindow {
                     Connections {
                         target: root
                         function onCurrentPageChanged() {
-                            if (pageLoader.sourceComponent !== root.pages[root.currentPage].component) {
+                            if (pageLoader.source !== root.pages[root.currentPage].component) {
                                 switchAnim.complete();
                                 switchAnim.start();
                             }

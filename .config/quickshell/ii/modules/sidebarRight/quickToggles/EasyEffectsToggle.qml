@@ -1,28 +1,26 @@
-import qs.modules.common.widgets
-import qs
-import qs.services
 import QtQuick
-import Quickshell.Io
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
+import qs
+import qs.modules.common.widgets
+import qs.services
 
 QuickToggleButton {
     id: root
+
     toggled: EasyEffects.active
     visible: EasyEffects.available
     buttonIcon: "instant_mix"
-
     Component.onCompleted: {
-        EasyEffects.fetchActiveState()
+        EasyEffects.fetchActiveState();
     }
-
     onClicked: {
-        EasyEffects.toggle()
+        EasyEffects.toggle();
     }
-
     altAction: () => {
-        Quickshell.execDetached(["bash", "-c", "flatpak run com.github.wwmm.easyeffects || easyeffects"])
-        GlobalStates.sidebarRightOpen = false
+        Quickshell.execDetached(["bash", "-c", "flatpak run com.github.wwmm.easyeffects || easyeffects"]);
+        GlobalStates.sidebarRightOpen = false;
     }
 
     StyledToolTip {
@@ -30,17 +28,20 @@ QuickToggleButton {
     }
 
     contentItem: Item {
+        readonly property bool usePlumpy: true
+
         anchors.centerIn: parent
-        width: 20; height: 20
-        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+        width: 20
+        height: 20
 
         PlumpyIcon {
             id: plumpy
+
             anchors.centerIn: parent
             visible: parent.usePlumpy
             iconSize: 20
             name: "speaker-mute" // placeholder until an EasyEffects-appropriate icon is added
-                primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
+            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
         }
 
         MaterialSymbol {
@@ -48,7 +49,7 @@ QuickToggleButton {
             visible: !parent.usePlumpy || !plumpy.available
             iconSize: 20
             fill: toggled ? 1 : 0
-                color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
+            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: buttonIcon
@@ -56,6 +57,9 @@ QuickToggleButton {
             Behavior on color {
                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
             }
+
         }
+
     }
+
 }

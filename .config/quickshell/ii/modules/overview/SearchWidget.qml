@@ -308,7 +308,7 @@ Item { // Wrapper
                     Layout.leftMargin: 15
                     implicitWidth: Appearance.font.pixelSize.huge
                     implicitHeight: Appearance.font.pixelSize.huge
-                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    readonly property bool usePlumpy: true
                     readonly property string msText: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? 'content_paste_search'
                         : (root.searchingText.startsWith('d ') ? 'menu_book'
                         : (root.searchingText.startsWith('ud ') ? 'forum' : 'search'))

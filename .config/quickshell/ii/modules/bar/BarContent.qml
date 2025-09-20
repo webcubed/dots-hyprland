@@ -340,7 +340,7 @@ Item { // Bar content region
                         }
                         Item {
                             width: Appearance.font.pixelSize.larger; height: width
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            readonly property bool usePlumpy: true
                             PlumpyIcon {
                                 id: barVolMutePlumpy
                                 anchors.centerIn: parent
@@ -367,7 +367,7 @@ Item { // Bar content region
                         }
                         Item {
                             width: Appearance.font.pixelSize.larger; height: width
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            readonly property bool usePlumpy: true
                             PlumpyIcon {
                                 id: barMicMutePlumpy
                                 anchors.centerIn: parent
@@ -405,7 +405,7 @@ Item { // Bar content region
                     Item {
                         Layout.rightMargin: indicatorsRowLayout.realSpacing
                         width: Appearance.font.pixelSize.larger; height: width
-                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                        readonly property bool usePlumpy: true
                         PlumpyIcon {
                             id: barWifiPlumpy
                             anchors.centerIn: parent
@@ -430,7 +430,7 @@ Item { // Bar content region
                     Item {
                         Layout.rightMargin: indicatorsRowLayout.realSpacing
                         width: Appearance.font.pixelSize.larger; height: width
-                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                        readonly property bool usePlumpy: true
                         PlumpyIcon {
                             id: barBtPlumpy
                             anchors.centerIn: parent

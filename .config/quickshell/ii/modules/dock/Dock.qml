@@ -114,7 +114,7 @@ Scope { // Scope
                                     onClicked: root.pinned = !root.pinned
                                     contentItem: Item {
                                         anchors.fill: parent
-                                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                                        readonly property bool usePlumpy: true
                                         PlumpyIcon {
                                             id: dockPinPlumpy
                                             anchors.centerIn: parent
@@ -147,7 +147,7 @@ Scope { // Scope
                                 bottomInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 contentItem: Item {
                                     anchors.fill: parent
-                                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                                    readonly property bool usePlumpy: true
                                     PlumpyIcon {
                                         id: dockAppsPlumpy
                                         anchors.centerIn: parent

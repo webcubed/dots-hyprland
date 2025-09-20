@@ -44,7 +44,7 @@ DialogListItem {
                 visible: (root.wifiNetwork?.isSecure || root.wifiNetwork?.active) ?? false
                 implicitWidth: Appearance.font.pixelSize.larger
                 implicitHeight: Appearance.font.pixelSize.larger
-                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                readonly property bool usePlumpy: true
                 PlumpyIcon {
                     id: wifiRowPlumpy
                     anchors.centerIn: parent

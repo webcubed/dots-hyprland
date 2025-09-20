@@ -104,7 +104,7 @@ TabButton {
                 switch(name) {
                 case 'calendar_month': return 'calendar';
                 case 'done_outline': return 'check';
-                case 'schedule': return 'schedule';
+                case 'schedule': return 'clock';
                 default: return '';
                 }
             }

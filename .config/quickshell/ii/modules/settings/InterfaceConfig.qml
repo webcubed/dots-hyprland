@@ -304,10 +304,10 @@ ContentPage {
             ConfigSwitch {
                 text: Translation.tr("Use Icons8 Plumpy icons for quick toggles")
                 checked: Config.options.sidebar.icons.usePlumpyRightToggles
-                onCheckedChanged: {
-                    Config.options.sidebar.icons.usePlumpyRightToggles = checked;
-                }
 
+                // checked: Config.options.sidebar.icons.usePlumpyRightToggles (removed)
+                // onCheckedChanged: {
+                //     Config.options.sidebar.icons.usePlumpyRightToggles = checked; (removed)
                 StyledToolTip {
                     text: Translation.tr("Only affects the right sidebar quick toggle buttons. Requires SVGs in assets/icons8/plumpy. Falls back to Material icons when missing.")
                 }

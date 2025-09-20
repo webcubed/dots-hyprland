@@ -173,7 +173,7 @@ Rectangle {
 
                 AiMessageControlButton {
                     id: copyButton
-                    buttonIcon: activated ? "inventory" : "content_copy"
+                    buttonIcon: activated ? (Config.options.sidebar?.icons?.usePlumpyRightToggles ? "inventory" : "inventory") : "content_copy"
 
                     onClicked: {
                         Quickshell.clipboardText = root.messageData?.content

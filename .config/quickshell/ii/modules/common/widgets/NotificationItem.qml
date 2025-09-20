@@ -275,6 +275,7 @@ Item { // Notification item area
                         }
 
                         NotificationActionButton {
+                            property bool copySuccess: false
                             Layout.fillWidth: true
                             urgency: notificationObject.urgency
                             implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) : 
@@ -282,7 +283,7 @@ Item { // Notification item area
 
                             onClicked: {
                                 Quickshell.clipboardText = notificationObject.body
-                                copyIcon.text = "inventory"
+                                copySuccess = true
                                 copyIconTimer.restart()
                             }
 
@@ -291,17 +292,32 @@ Item { // Notification item area
                                 interval: 1500
                                 repeat: false
                                 onTriggered: {
-                                    copyIcon.text = "content_copy"
+                                    parent.copySuccess = false
                                 }
                             }
 
-                            contentItem: MaterialSymbol {
-                                id: copyIcon
-                                iconSize: Appearance.font.pixelSize.large
-                                horizontalAlignment: Text.AlignHCenter
-                                color: (notificationObject.urgency == NotificationUrgency.Critical) ? 
-                                    Appearance.m3colors.m3onSurfaceVariant : Appearance.m3colors.m3onSurface
-                                text: "content_copy"
+                            contentItem: Item {
+                                implicitWidth: Appearance.font.pixelSize.large
+                                implicitHeight: Appearance.font.pixelSize.large
+                                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+
+                                PlumpyIcon {
+                                    anchors.centerIn: parent
+                                    visible: parent.usePlumpy && parent.copySuccess
+                                    iconSize: parent.implicitWidth
+                                    name: 'clipboard-approve'
+                                    primaryColor: (notificationObject.urgency == NotificationUrgency.Critical) ? 
+                                        Appearance.m3colors.m3onSurfaceVariant : Appearance.m3colors.m3onSurface
+                                }
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    visible: !parent.usePlumpy || !parent.copySuccess
+                                    iconSize: parent.implicitWidth
+                                    horizontalAlignment: Text.AlignHCenter
+                                    color: (notificationObject.urgency == NotificationUrgency.Critical) ? 
+                                        Appearance.m3colors.m3onSurfaceVariant : Appearance.m3colors.m3onSurface
+                                    text: parent.copySuccess ? "inventory" : "content_copy"
+                                }
                             }
                         }
                         

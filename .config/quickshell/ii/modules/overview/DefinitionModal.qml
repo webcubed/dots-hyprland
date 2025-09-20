@@ -307,6 +307,7 @@ FocusScope {
                     Layout.fillWidth: true
                 }
                 // Close button
+
                 RippleButton {
                     implicitHeight: 34
                     implicitWidth: 34
@@ -315,18 +316,22 @@ FocusScope {
                     onClicked: overlay.closeModal()
 
                     contentItem: Item {
+                        readonly property bool usePlumpy: true
+
                         anchors.centerIn: parent
                         implicitWidth: Appearance.font.pixelSize.hugeass
                         implicitHeight: Appearance.font.pixelSize.hugeass
-                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+
                         PlumpyIcon {
                             id: defClosePlumpy
+
                             anchors.centerIn: parent
                             visible: parent.usePlumpy
                             iconSize: parent.implicitWidth
                             name: 'x'
                             primaryColor: Appearance.m3colors.m3onSurface
                         }
+
                         MaterialSymbol {
                             anchors.centerIn: parent
                             visible: !parent.usePlumpy || !defClosePlumpy.available
@@ -335,6 +340,7 @@ FocusScope {
                             color: Appearance.m3colors.m3onSurface
                             font.hintingPreference: Font.PreferFullHinting
                         }
+
                     }
 
                 }

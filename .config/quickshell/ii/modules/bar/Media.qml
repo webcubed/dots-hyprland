@@ -65,7 +65,7 @@ Item {
                 Item {
                     anchors.centerIn: parent
                     width: Appearance.font.pixelSize.normal; height: width
-                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    readonly property bool usePlumpy: true
                     PlumpyIcon {
                         id: mediaCircPlumpy
                         anchors.centerIn: parent

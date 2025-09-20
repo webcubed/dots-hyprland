@@ -142,11 +142,14 @@ TabButton {
     contentItem: Item {
         anchors.centerIn: buttonBackground
         // Prefer Plumpy when enabled and an asset exists; fallback to MaterialSymbol
-        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+    readonly property bool usePlumpy: true
         function plumpyFromTabIcon(name) {
             // Cheatsheet tabs and common cases
             if (name === 'experiment') return 'chemistry'
             if (name === 'keyboard') return 'keyboard'
+            // Right sidebar tabs
+            if (name === 'notifications') return 'bell' // use Plumpy bell for notifications
+            if (name === 'volume_up') return '' // force Material fallback for Audio tab
             return name || ''
         }
         ColumnLayout {

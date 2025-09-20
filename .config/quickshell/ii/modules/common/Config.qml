@@ -347,9 +347,7 @@ Singleton {
                 property bool keepRightSidebarLoaded: true
                 // Icons and visual tweaks for the right sidebar
                 property JsonObject icons: JsonObject {
-                    // When true, use locally provided Icons8 Plumpy SVGs for right sidebar quick toggles
-                    // Scope: only quick-toggle buttons in the right sidebar. Defaults to false.
-                    property bool usePlumpyRightToggles: false
+                    // Reserved for future right sidebar visual tweaks
                 }
                 property JsonObject translator: JsonObject {
                     property int delay: 300 // Delay before sending request. Reduces (potential) rate limits and lag.

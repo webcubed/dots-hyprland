@@ -496,7 +496,7 @@ Item {
                 ]
 
                 ApiInputBoxIndicator { // Tool indicator
-                    icon: "api"
+                    icon: "build"
                     text: Booru.providers[Booru.currentProvider].name
                     tooltipText: Translation.tr("Current API endpoint: %1\nSet it with %2mode PROVIDER")
                         .arg(Booru.providers[Booru.currentProvider].url)

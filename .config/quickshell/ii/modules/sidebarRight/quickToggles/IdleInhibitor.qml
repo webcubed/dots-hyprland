@@ -1,14 +1,15 @@
-import qs.modules.common.widgets
-import qs
-import qs.services
 import QtQuick
+import qs
+import qs.modules.common.widgets
+import qs.services
 
 QuickToggleButton {
     id: root
+
     toggled: Idle.inhibit
     buttonIcon: "coffee"
     onClicked: {
-        Idle.toggleInhibit()
+        Idle.toggleInhibit();
     }
 
     StyledToolTip {
@@ -16,16 +17,20 @@ QuickToggleButton {
     }
 
     contentItem: Item {
+        readonly property bool usePlumpy: true
+
         anchors.centerIn: parent
-        width: 20; height: 20
-        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+        width: 20
+        height: 20
 
         PlumpyIcon {
             id: plumpy
+
             anchors.centerIn: parent
             visible: parent.usePlumpy
             iconSize: 20
             name: "coffee"
+            // Use themed neutral when off, on-primary when toggled
             primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
         }
 
@@ -34,6 +39,7 @@ QuickToggleButton {
             visible: !parent.usePlumpy || !plumpy.available
             iconSize: 20
             fill: toggled ? 1 : 0
+            // Use themed neutral when off, on-primary when toggled
             color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -42,7 +48,9 @@ QuickToggleButton {
             Behavior on color {
                 animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
             }
+
         }
+
     }
 
 }

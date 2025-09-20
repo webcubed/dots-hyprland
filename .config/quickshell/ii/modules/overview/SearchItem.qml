@@ -27,7 +27,7 @@ RippleButton {
     property string materialSymbol: entry?.materialSymbol ?? ""
     property string cliphistRawString: entry?.cliphistRawString ?? ""
     // Reuse the global flag for now (controls Plumpy usage elsewhere too)
-    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+    readonly property bool usePlumpy: true
     // Map a handful of common Material icon names to Plumpy filenames
     function plumpyFromMaterial(name) {
         switch (name) {

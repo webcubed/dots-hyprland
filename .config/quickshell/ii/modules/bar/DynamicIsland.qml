@@ -615,8 +615,8 @@ Item {
 				Layout.alignment: Qt.AlignVCenter
 				implicitWidth: Appearance.font.pixelSize.larger
 				implicitHeight: Appearance.font.pixelSize.larger
-				readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
-				PlumpyIcon { id: diDropPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && dynamicIsland.dropSuccessFlash; iconSize: parent.implicitWidth; name: 'inventory'; primaryColor: Appearance.colors.colOnLayer1 }
+				readonly property bool usePlumpy: true
+				PlumpyIcon { id: diDropPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && dynamicIsland.dropSuccessFlash; iconSize: parent.implicitWidth; name: 'clipboard-approve'; primaryColor: Appearance.colors.colOnLayer1 }
 				MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !diDropPlumpy.available; text: "inventory"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnLayer1 }
 			}
 			StyledText {
@@ -827,7 +827,7 @@ Item {
 				Item {
 					anchors.centerIn: parent
 					width: 14; height: 14
-					readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+					readonly property bool usePlumpy: true
 					PlumpyIcon { id: diClipboardPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'copy'; primaryColor: Appearance.colors.colOnSecondaryContainer }
 					MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !diClipboardPlumpy.available; text: "content_paste"; iconSize: parent.width; color: Appearance.colors.colOnSecondaryContainer }
 				}
@@ -931,8 +931,8 @@ Item {
 					Item {
 						anchors.centerIn: parent
 						width: 14; height: 14
-						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
-						PlumpyIcon { id: diMusicNotePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'music-note'; primaryColor: GlobalStates.lyricsModeActive ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1 }
+						readonly property bool usePlumpy: true
+						PlumpyIcon { id: diMusicNotePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'icons8-music-note'; primaryColor: GlobalStates.lyricsModeActive ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1 }
 						MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !diMusicNotePlumpy.available; text: "music_note"; iconSize: parent.width; color: GlobalStates.lyricsModeActive ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer1 }
 					}
 					MouseArea {
@@ -1504,7 +1504,7 @@ Item {
 					contentItem: Item {
 						anchors.centerIn: parent
 						width: 13; height: 13
-						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+						readonly property bool usePlumpy: true
 						PlumpyIcon {
 							id: islandPrevPlumpy
 							anchors.centerIn: parent
@@ -1546,7 +1546,7 @@ Item {
 					contentItem: Item {
 						anchors.centerIn: parent
 						width: 13; height: 13
-						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+						readonly property bool usePlumpy: true
 						PlumpyIcon {
 							id: islandPlayPlumpy
 							anchors.centerIn: parent
