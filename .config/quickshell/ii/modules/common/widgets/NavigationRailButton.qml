@@ -98,10 +98,29 @@ TabButton {
                 left: parent.left
                 verticalCenter: parent.verticalCenter
             }
+            // Prefer Plumpy icons when available; fallback to Material symbols
+            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+            function plumpyFromMaterial(name) {
+                switch(name) {
+                case 'calendar_month': return 'calendar';
+                case 'done_outline': return 'check';
+                case 'schedule': return 'schedule';
+                default: return '';
+                }
+            }
+            PlumpyIcon {
+                id: navRailPlumpy
+                anchors.centerIn: parent
+                visible: itemIconBackground.usePlumpy && name !== ''
+                iconSize: 24
+                name: itemIconBackground.plumpyFromMaterial(root.buttonIcon)
+                primaryColor: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer1
+            }
             MaterialSymbol {
                 id: navRailButtonIcon
                 rotation: root.buttonIconRotation
                 anchors.centerIn: parent
+                visible: !navRailPlumpy.visible || !navRailPlumpy.available
                 iconSize: 24
                 fill: toggled ? 1 : 0
                 font.weight: (toggled || root.hovered) ? Font.DemiBold : Font.Normal

@@ -141,19 +141,38 @@ TabButton {
     
     contentItem: Item {
         anchors.centerIn: buttonBackground
+        // Prefer Plumpy when enabled and an asset exists; fallback to MaterialSymbol
+        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+        function plumpyFromTabIcon(name) {
+            // Cheatsheet tabs and common cases
+            if (name === 'experiment') return 'chemistry'
+            if (name === 'keyboard') return 'keyboard'
+            return name || ''
+        }
         ColumnLayout {
             anchors.centerIn: parent
             spacing: 0
-            MaterialSymbol {
-                visible: buttonIcon?.length > 0
+            Item {
                 Layout.alignment: Qt.AlignHCenter
-                horizontalAlignment: Text.AlignHCenter
-                text: buttonIcon
-                iconSize: Appearance?.font.pixelSize.hugeass ?? 25
-                fill: selected ? 1 : 0
-                color: selected ? button.colActive : button.colInactive
-                Behavior on color {
-                    animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)
+                implicitWidth: Appearance?.font.pixelSize.hugeass ?? 25
+                implicitHeight: Appearance?.font.pixelSize.hugeass ?? 25
+                visible: (buttonIcon?.length ?? 0) > 0
+                PlumpyIcon {
+                    id: tabPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.visible && parentItem.usePlumpy
+                    iconSize: parent.implicitWidth
+                    name: parentItem.plumpyFromTabIcon(buttonIcon)
+                    primaryColor: selected ? button.colActive : button.colInactive
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: parent.visible && (!parentItem.usePlumpy || !tabPlumpy.available)
+                    horizontalAlignment: Text.AlignHCenter
+                    text: buttonIcon
+                    iconSize: parent.implicitWidth
+                    fill: selected ? 1 : 0
+                    color: selected ? button.colActive : button.colInactive
                 }
             }
             StyledText {

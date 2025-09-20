@@ -22,11 +22,25 @@ Rectangle {
         spacing: -10
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            MaterialSymbol {
-                id: symbol
-                fill: 0
-                iconSize: Appearance.font.pixelSize.normal
-                color: Appearance.colors.colOnSurfaceVariant
+            Item {
+                implicitWidth: Appearance.font.pixelSize.normal
+                implicitHeight: Appearance.font.pixelSize.normal
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                // Map common weather metric symbols to plumpy
+                function plumpyFromSymbol(sym) {
+                    switch(sym) {
+                    case 'wb_sunny': return 'sun';
+                    case 'air': return 'wind';
+                    case 'rainy_light': return 'rain';
+                    case 'humidity_low': return 'thermometer'; // approximate
+                    case 'visibility': return 'visibility';
+                    case 'wb_twilight': return 'sunrise';
+                    case 'bedtime': return 'moon';
+                    default: return '';
+                    }
+                }
+                PlumpyIcon { id: cardPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && name !== ''; iconSize: parent.implicitWidth; name: plumpyFromSymbol(root.symbol); primaryColor: Appearance.colors.colOnSurfaceVariant }
+                MaterialSymbol { id: symbol; anchors.centerIn: parent; visible: !parent.usePlumpy || !cardPlumpy.available; fill: 0; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant }
             }
             StyledText {
                 id: title

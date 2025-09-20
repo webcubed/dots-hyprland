@@ -39,7 +39,7 @@ QuickToggleButton {
                 const s = Network.networkStrength;
                 return s > 80 ? "wifi-4" : s > 60 ? "wifi-3" : s > 40 ? "wifi-2" : s > 20 ? "wifi-1" : "wifi-0";
             }
-            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+                primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
         }
 
         MaterialSymbol {
@@ -47,7 +47,8 @@ QuickToggleButton {
             visible: !parent.usePlumpy || !plumpy.available
             iconSize: 20
             fill: toggled ? 1 : 0
-            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+
+                color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: buttonIcon

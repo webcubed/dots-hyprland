@@ -38,7 +38,7 @@ QuickToggleButton {
             visible: parent.usePlumpy
             iconSize: 20
             name: BluetoothStatus.enabled ? (BluetoothStatus.connected ? "bluetooth-connected" : "bluetooth") : "bluetooth" // no disabled variant yet
-            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
         }
 
         MaterialSymbol {
@@ -46,7 +46,7 @@ QuickToggleButton {
             visible: !parent.usePlumpy || !plumpy.available
             iconSize: 20
             fill: toggled ? 1 : 0
-            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: buttonIcon

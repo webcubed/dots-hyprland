@@ -83,15 +83,16 @@ MouseArea {
                 anchors.centerIn: parent
                 spacing: 0
 
-                MaterialSymbol {
-                    id: boltIcon
+                Item {
                     Layout.alignment: Qt.AlignVCenter
                     Layout.leftMargin: -2
                     Layout.rightMargin: -2
-                    fill: 1
-                    text: "bolt"
-                    iconSize: Appearance.font.pixelSize.smaller
-                    visible: !root.compact && isCharging && percentage < 1 // TODO: animation
+                    implicitWidth: Appearance.font.pixelSize.smaller
+                    implicitHeight: Appearance.font.pixelSize.smaller
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    visible: !root.compact && isCharging && percentage < 1
+                    PlumpyIcon { id: batBoltInlinePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'bolt'; primaryColor: Appearance.colors.colOnSecondaryContainer }
+                    MaterialSymbol { id: boltIcon; anchors.centerIn: parent; visible: !parent.usePlumpy || !batBoltInlinePlumpy.available; fill: 1; text: "bolt"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSecondaryContainer }
                 }
                 StyledText {
                     Layout.alignment: Qt.AlignVCenter

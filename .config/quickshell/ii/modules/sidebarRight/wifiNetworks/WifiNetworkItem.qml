@@ -40,11 +40,26 @@ DialogListItem {
                 elide: Text.ElideRight
                 text: root.wifiNetwork?.ssid ?? Translation.tr("Unknown")
             }
-            MaterialSymbol {
+            Item {
                 visible: (root.wifiNetwork?.isSecure || root.wifiNetwork?.active) ?? false
-                text: root.wifiNetwork?.active ? "check" : Network.wifiConnectTarget === root.wifiNetwork ? "settings_ethernet" : "lock"
-                iconSize: Appearance.font.pixelSize.larger
-                color: Appearance.colors.colOnSurfaceVariant
+                implicitWidth: Appearance.font.pixelSize.larger
+                implicitHeight: Appearance.font.pixelSize.larger
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: wifiRowPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy && (root.wifiNetwork?.active || root.wifiNetwork?.isSecure)
+                    iconSize: parent.implicitWidth
+                    name: root.wifiNetwork?.active ? 'check' : 'lock'
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !wifiRowPlumpy.available
+                    text: root.wifiNetwork?.active ? 'check' : Network.wifiConnectTarget === root.wifiNetwork ? 'settings_ethernet' : 'lock'
+                    iconSize: parent.implicitWidth
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
         }
 

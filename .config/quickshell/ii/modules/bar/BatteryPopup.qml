@@ -22,13 +22,7 @@ StyledPopup {
             id: header
             spacing: 5
 
-            MaterialSymbol {
-                fill: 0
-                font.weight: Font.Medium
-                text: "battery_android_full"
-                iconSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnSurfaceVariant
-            }
+            Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: batHdrPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'battery'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !batHdrPlumpy.available; fill: 0; font.weight: Font.Medium; text: "battery_android_full"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
 
             StyledText {
                 text: "Battery"
@@ -57,11 +51,7 @@ StyledPopup {
                 }
             }
 
-            MaterialSymbol {
-                text: "schedule"
-                color: Appearance.colors.colOnSurfaceVariant
-                iconSize: Appearance.font.pixelSize.large
-            }
+            Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: batSchPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'schedule'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !batSchPlumpy.available; text: "schedule"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
             StyledText {
                 text: Battery.isCharging ? Translation.tr("Time to full:") : Translation.tr("Time to empty:")
                 color: Appearance.colors.colOnSurfaceVariant
@@ -100,11 +90,7 @@ StyledPopup {
                 }
             }
 
-            MaterialSymbol {
-                text: "bolt"
-                color: Appearance.colors.colOnSurfaceVariant
-                iconSize: Appearance.font.pixelSize.large
-            }
+            Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: batBoltPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'bolt'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !batBoltPlumpy.available; text: "bolt"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
 
             StyledText {
                 text: {

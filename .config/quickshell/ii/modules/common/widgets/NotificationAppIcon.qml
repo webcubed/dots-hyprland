@@ -29,20 +29,34 @@ Rectangle { // App icon
         id: materialSymbolLoader
         active: root.appIcon == ""
         anchors.fill: parent
-        sourceComponent: MaterialSymbol {
-            text: {
-                const defaultIcon = NotificationUtils.findSuitableMaterialSymbol("")
-                const guessedIcon = NotificationUtils.findSuitableMaterialSymbol(root.summary)
-                return (root.urgency == NotificationUrgency.Critical && guessedIcon === defaultIcon) ?
-                    "release_alert" : guessedIcon
-            }
+        sourceComponent: Item {
             anchors.fill: parent
-            color: (root.urgency == NotificationUrgency.Critical) ? 
-                ColorUtils.mix(Appearance.m3colors.m3onSecondary, Appearance.m3colors.m3onSecondaryContainer, 0.1) :
-                Appearance.m3colors.m3onSecondaryContainer
-            iconSize: root.materialIconSize
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+            function plumpyFromGuess(name) {
+                switch(name) {
+                case 'calendar_month':
+                case 'calendar_today': return 'calendar';
+                case 'forum':
+                case 'chat': return 'chat';
+                case 'terminal': return 'terminal';
+                case 'notifications': return 'bell';
+                case 'notifications_active': return 'bell-ringing';
+                case 'phone_android':
+                case 'phone_iphone': return 'phone';
+                case 'headphones': return 'headphones';
+                case 'image': return 'image';
+                case 'mic': return 'mic';
+                case 'mic_off': return 'mic-mute';
+                default: return '';
+                }
+            }
+            readonly property string guessed: (function(){
+                const def = NotificationUtils.findSuitableMaterialSymbol("")
+                const g = NotificationUtils.findSuitableMaterialSymbol(root.summary)
+                return (root.urgency == NotificationUrgency.Critical && g === def) ? 'release_alert' : g
+            })()
+            PlumpyIcon { id: notifPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && name !== ''; iconSize: root.materialIconSize; name: plumpyFromGuess(parent.guessed); primaryColor: (root.urgency == NotificationUrgency.Critical) ? ColorUtils.mix(Appearance.m3colors.m3onSecondary, Appearance.m3colors.m3onSecondaryContainer, 0.1) : Appearance.m3colors.m3onSecondaryContainer }
+            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !notifPlumpy.available || notifPlumpy.name === ''; text: parent.guessed; color: (root.urgency == NotificationUrgency.Critical) ? ColorUtils.mix(Appearance.m3colors.m3onSecondary, Appearance.m3colors.m3onSecondaryContainer, 0.1) : Appearance.m3colors.m3onSecondaryContainer; iconSize: root.materialIconSize; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
         }
     }
     Loader {

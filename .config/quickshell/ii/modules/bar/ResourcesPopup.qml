@@ -22,10 +22,22 @@ StyledPopup {
         spacing: 4
         Layout.fillWidth: true
 
-        MaterialSymbol {
-            text: resourceItem.icon
-            color: Appearance.colors.colOnSurfaceVariant
-            iconSize: Appearance.font.pixelSize.large
+        Item {
+            implicitWidth: Appearance.font.pixelSize.large
+            implicitHeight: Appearance.font.pixelSize.large
+            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+            function plumpyFromSymbol(name) {
+                switch(name) {
+                case 'bolt': return 'bolt';
+                case 'device_thermostat': return 'thermometer';
+                case 'air': return 'wind';
+                case 'check_circle': return 'check';
+                case 'clock_loader_60': return 'piechart';
+                default: return '';
+                }
+            }
+            PlumpyIcon { id: resItemPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && name !== ''; iconSize: parent.implicitWidth; name: plumpyFromSymbol(resourceItem.icon); primaryColor: Appearance.colors.colOnSurfaceVariant }
+            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !resItemPlumpy.available || resItemPlumpy.name === ''; text: resourceItem.icon; color: Appearance.colors.colOnSurfaceVariant; iconSize: parent.implicitWidth }
         }
         StyledText {
             text: resourceItem.label
@@ -46,13 +58,7 @@ StyledPopup {
         required property var label
         spacing: 5
 
-        MaterialSymbol {
-            fill: 0
-            font.weight: Font.Medium
-            text: headerItem.icon
-            iconSize: Appearance.font.pixelSize.large
-            color: Appearance.colors.colOnSurfaceVariant
-        }
+        Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; function plumpyFromSymbol(name) { switch(name) { case 'memory': return 'cpu'; case 'memory_alt': return 'memory-slot'; default: return ''; } } PlumpyIcon { id: resHdrPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && name !== ''; iconSize: parent.implicitWidth; name: plumpyFromSymbol(headerItem.icon); primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !resHdrPlumpy.available || resHdrPlumpy.name === ''; fill: 0; font.weight: Font.Medium; text: headerItem.icon; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
 
         StyledText {
             text: headerItem.label

@@ -33,16 +33,11 @@ Item { // Player instance
         colBackgroundHover: blendedColors.colSecondaryContainerHover
         colRipple: blendedColors.colSecondaryContainerActive
 
-        contentItem: MaterialSymbol {
-            iconSize: Appearance.font.pixelSize.huge
-            fill: 1
-            horizontalAlignment: Text.AlignHCenter
-            color: blendedColors.colOnSecondaryContainer
-            text: iconName
-
-            Behavior on color {
-                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-            }
+        contentItem: Item {
+            anchors.fill: parent
+            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+            PlumpyIcon { id: trackBtnPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: iconName === 'skip_previous' ? 'previous' : (iconName === 'skip_next' ? 'skip' : 'tune'); primaryColor: blendedColors.colOnSecondaryContainer }
+            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !trackBtnPlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: blendedColors.colOnSecondaryContainer; text: iconName }
         }
     }
 
@@ -295,16 +290,11 @@ Item { // Player instance
                         colBackgroundHover: playerController.player?.isPlaying ? blendedColors.colPrimaryHover : blendedColors.colSecondaryContainerHover
                         colRipple: playerController.player?.isPlaying ? blendedColors.colPrimaryActive : blendedColors.colSecondaryContainerActive
 
-                        contentItem: MaterialSymbol {
-                            iconSize: Appearance.font.pixelSize.huge
-                            fill: 1
-                            horizontalAlignment: Text.AlignHCenter
-                            color: playerController.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer
-                            text: playerController.player?.isPlaying ? "pause" : "play_arrow"
-
-                            Behavior on color {
-                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-                            }
+                        contentItem: Item {
+                            anchors.fill: parent
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            PlumpyIcon { id: playPausePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: playerController.player?.isPlaying ? 'pause' : 'play'; primaryColor: playerController.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer }
+                            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !playPausePlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: playerController.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer; text: playerController.player?.isPlaying ? "pause" : "play_arrow" }
                         }
                     }
                 }

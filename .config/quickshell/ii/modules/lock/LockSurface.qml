@@ -131,13 +131,28 @@ MouseArea {
 
             onClicked: root.context.tryUnlock()
 
-            contentItem: MaterialSymbol {
+            contentItem: Item {
                 anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                iconSize: 24
-                text: "arrow_right_alt"
-                color: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                implicitWidth: 24
+                implicitHeight: 24
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: lockConfirmPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy
+                    iconSize: parent.implicitWidth
+                    name: 'check'
+                    primaryColor: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !lockConfirmPlumpy.available
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    iconSize: parent.implicitWidth
+                    text: 'arrow_right_alt'
+                    color: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
+                }
             }
         }
     }
@@ -160,13 +175,27 @@ MouseArea {
             Layout.leftMargin: 8
             Layout.fillHeight: true
 
-            MaterialSymbol {
-                id: userIcon
+            Item {
                 Layout.alignment: Qt.AlignVCenter
-                fill: 1
-                text: "account_circle"
-                iconSize: Appearance.font.pixelSize.huge
-                color: Appearance.colors.colOnSurfaceVariant
+                implicitWidth: Appearance.font.pixelSize.huge
+                implicitHeight: Appearance.font.pixelSize.huge
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: lockUserPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy
+                    iconSize: parent.implicitWidth
+                    name: 'person'
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !lockUserPlumpy.available
+                    fill: 1
+                    text: 'account_circle'
+                    iconSize: parent.implicitWidth
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
             StyledText {
                 Layout.alignment: Qt.AlignVCenter
@@ -187,13 +216,27 @@ MouseArea {
             sourceComponent: RowLayout {
                 spacing: 8
 
-                MaterialSymbol {
-                    id: keyboardIcon
+                Item {
                     Layout.alignment: Qt.AlignVCenter
-                    fill: 1
-                    text: "keyboard_alt"
-                    iconSize: Appearance.font.pixelSize.huge
-                    color: Appearance.colors.colOnSurfaceVariant
+                    implicitWidth: Appearance.font.pixelSize.huge
+                    implicitHeight: Appearance.font.pixelSize.huge
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    PlumpyIcon {
+                        id: lockKbPlumpy
+                        anchors.centerIn: parent
+                        visible: parent.usePlumpy
+                        iconSize: parent.implicitWidth
+                        name: 'terminal'
+                        primaryColor: Appearance.colors.colOnSurfaceVariant
+                    }
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        visible: !parent.usePlumpy || !lockKbPlumpy.available
+                        fill: 1
+                        text: 'keyboard_alt'
+                        iconSize: parent.implicitWidth
+                        color: Appearance.colors.colOnSurfaceVariant
+                    }
                 }
                 Loader {
                     sourceComponent: StyledText {
@@ -236,16 +279,30 @@ MouseArea {
             Layout.leftMargin: 10
             Layout.rightMargin: 10
 
-            MaterialSymbol {
-                id: boltIcon
+            Item {
                 Layout.alignment: Qt.AlignVCenter
                 Layout.leftMargin: -2
                 Layout.rightMargin: -2
-                fill: 1
-                text: Battery.isCharging ? "bolt" : "battery_android_full"
-                iconSize: Appearance.font.pixelSize.huge
-                animateChange: true
-                color: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
+                implicitWidth: Appearance.font.pixelSize.huge
+                implicitHeight: Appearance.font.pixelSize.huge
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: lockBatteryPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy && Battery.isCharging
+                    iconSize: parent.implicitWidth
+                    name: 'power'
+                    primaryColor: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !lockBatteryPlumpy.available || !Battery.isCharging
+                    fill: 1
+                    text: Battery.isCharging ? 'bolt' : 'battery_android_full'
+                    iconSize: parent.implicitWidth
+                    animateChange: true
+                    color: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
+                }
             }
             StyledText {
                 Layout.alignment: Qt.AlignVCenter
@@ -260,13 +317,28 @@ MouseArea {
 
             onClicked: Session.suspend()
 
-            contentItem: MaterialSymbol {
+            contentItem: Item {
                 anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                iconSize: 24
-                text: "dark_mode"
-                color: Appearance.colors.colOnSurfaceVariant
+                implicitWidth: 24
+                implicitHeight: 24
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: sleepPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy
+                    iconSize: parent.implicitWidth
+                    name: 'moon'
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !sleepPlumpy.available
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    iconSize: parent.implicitWidth
+                    text: 'dark_mode'
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
         }
 
@@ -276,13 +348,28 @@ MouseArea {
 
             onClicked: Session.poweroff()
 
-            contentItem: MaterialSymbol {
+            contentItem: Item {
                 anchors.centerIn: parent
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                iconSize: 24
-                text: "power_settings_new"
-                color: Appearance.colors.colOnSurfaceVariant
+                implicitWidth: 24
+                implicitHeight: 24
+                readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                PlumpyIcon {
+                    id: powerPlumpy
+                    anchors.centerIn: parent
+                    visible: parent.usePlumpy
+                    iconSize: parent.implicitWidth
+                    name: 'power'
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !parent.usePlumpy || !powerPlumpy.available
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    iconSize: parent.implicitWidth
+                    text: 'power_settings_new'
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
         }
     }

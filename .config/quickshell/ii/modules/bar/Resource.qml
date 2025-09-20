@@ -40,12 +40,34 @@ Item {
                 anchors.centerIn: parent
                 width: resourceCircProg.implicitSize
                 height: resourceCircProg.implicitSize
-                
+                // Prefer Plumpy icons when available; fallback to Material symbols
+                function plumpyFromMaterial(name) {
+                    switch (name) {
+                    case 'memory': // CPU icon in this context
+                    case 'planner_review':
+                        return 'cpu';
+                    case 'memory_alt':
+                        return 'memory-slot';
+                    // No good Plumpy match for swap_horiz; keep Material
+                    default:
+                        return '';
+                    }
+                }
+
+                PlumpyIcon {
+                    id: resPlumpy
+                    anchors.centerIn: parent
+                    visible: (Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false) && name !== ''
+                    iconSize: Appearance.font.pixelSize.normal
+                    name: plumpyFromMaterial(root.iconName)
+                    primaryColor: Appearance.m3colors.m3onSecondaryContainer
+                }
                 MaterialSymbol {
                     anchors.centerIn: parent
+                    visible: !resPlumpy.visible || !resPlumpy.available
                     font.weight: Font.DemiBold
                     fill: 1
-                    text: iconName
+                    text: root.iconName
                     iconSize: Appearance.font.pixelSize.normal
                     color: Appearance.m3colors.m3onSecondaryContainer
                 }

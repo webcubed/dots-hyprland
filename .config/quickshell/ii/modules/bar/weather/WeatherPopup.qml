@@ -27,12 +27,12 @@ StyledPopup {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 6
 
-                MaterialSymbol {
-                    fill: 0
-                    font.weight: Font.Medium
-                    text: "location_on"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnSurfaceVariant
+                Item {
+                    implicitWidth: Appearance.font.pixelSize.large
+                    implicitHeight: Appearance.font.pixelSize.large
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    PlumpyIcon { id: locPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'pin'; primaryColor: Appearance.colors.colOnSurfaceVariant }
+                    MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !locPlumpy.available; fill: 0; font.weight: Font.Medium; text: "location_on"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant }
                 }
 
                 StyledText {

@@ -26,13 +26,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: Quickshell.execDetached(["qs", "-p", Quickshell.shellPath("screenshot.qml")])
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 1
-                    text: "screenshot_region"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
-                }
+                Item { anchors.centerIn: parent; width: Appearance.font.pixelSize.large; height: width; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: snipPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'image'; primaryColor: Appearance.colors.colOnLayer2 } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !snipPlumpy.available; horizontalAlignment: Text.AlignHCenter; fill: 1; text: "screenshot_region"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 } }
             }
         }
 
@@ -42,13 +36,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: Quickshell.execDetached(["hyprpicker", "-a"])
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 1
-                    text: "colorize"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
-                }
+                Item { anchors.centerIn: parent; width: Appearance.font.pixelSize.large; height: width; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: colorPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'toolbox'; primaryColor: Appearance.colors.colOnLayer2 } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !colorPlumpy.available; horizontalAlignment: Text.AlignHCenter; fill: 1; text: "colorize"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 } }
             }
         }
 
@@ -58,13 +46,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: GlobalStates.oskOpen = !GlobalStates.oskOpen
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 0
-                    text: "keyboard"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
-                }
+                Item { anchors.centerIn: parent; width: Appearance.font.pixelSize.large; height: width; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: kbPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: 'keyboard'; primaryColor: Appearance.colors.colOnLayer2 } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !kbPlumpy.available; horizontalAlignment: Text.AlignHCenter; fill: 0; text: "keyboard"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 } }
             }
         }
 
@@ -74,13 +56,7 @@ Item {
             sourceComponent: CircleUtilButton {
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_SOURCE@", "toggle"])
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 0
-                    text: Pipewire.defaultAudioSource?.audio?.muted ? "mic_off" : "mic"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
-                }
+                Item { anchors.centerIn: parent; width: Appearance.font.pixelSize.large; height: width; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: micPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: Pipewire.defaultAudioSource?.audio?.muted ? 'mic-mute' : 'mic'; primaryColor: Appearance.colors.colOnLayer2 } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !micPlumpy.available; horizontalAlignment: Text.AlignHCenter; fill: 0; text: Pipewire.defaultAudioSource?.audio?.muted ? "mic_off" : "mic"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 } }
             }
         }
 
@@ -96,13 +72,7 @@ Item {
                         Hyprland.dispatch(`exec ${Directories.wallpaperSwitchScriptPath} --mode dark --noswitch`);
                     }
                 }
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 0
-                    text: Appearance.m3colors.darkmode ? "light_mode" : "dark_mode"
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
-                }
+                Item { anchors.centerIn: parent; width: Appearance.font.pixelSize.large; height: width; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: themePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: Appearance.m3colors.darkmode ? 'sun' : 'moon'; primaryColor: Appearance.colors.colOnLayer2 } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !themePlumpy.available; horizontalAlignment: Text.AlignHCenter; fill: 0; text: Appearance.m3colors.darkmode ? "light_mode" : "dark_mode"; iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 } }
             }
         }
 
@@ -125,16 +95,28 @@ Item {
                         PowerProfiles.profile = PowerProfiles.profile == PowerProfile.Balanced ? PowerProfile.PowerSaver : PowerProfile.Balanced
                     }
                 }
-                MaterialSymbol {
-                    horizontalAlignment: Qt.AlignHCenter
-                    fill: 0
-                    text: switch(PowerProfiles.profile) {
+                Item {
+                    anchors.centerIn: parent
+                    width: Appearance.font.pixelSize.large; height: width
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    function plumpyForProfile(p) {
+                        switch(p) {
+                        case PowerProfile.PowerSaver: return 'leaf'
+                        case PowerProfile.Balanced: return 'settings'
+                        case PowerProfile.Performance: return 'bolt'
+                        default: return ''
+                        }
+                    }
+                    function materialForProfile(p) {
+                        switch(p) {
                         case PowerProfile.PowerSaver: return "energy_savings_leaf"
                         case PowerProfile.Balanced: return "settings_slow_motion"
                         case PowerProfile.Performance: return "local_fire_department"
+                        default: return "settings"
+                        }
                     }
-                    iconSize: Appearance.font.pixelSize.large
-                    color: Appearance.colors.colOnLayer2
+                    PlumpyIcon { id: profPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy && name !== ''; iconSize: parent.width; name: plumpyForProfile(PowerProfiles.profile); primaryColor: Appearance.colors.colOnLayer2 }
+                    MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !profPlumpy.available || profPlumpy.name === ''; horizontalAlignment: Text.AlignHCenter; fill: 0; text: materialForProfile(PowerProfiles.profile); iconSize: Appearance.font.pixelSize.large; color: Appearance.colors.colOnLayer2 }
                 }
             }
         }

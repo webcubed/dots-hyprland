@@ -38,7 +38,7 @@ QuickToggleButton {
             iconSize: 20
             // Requested mapping: auto → moon-and-stars (existing 'night-light.svg'); manual → 'moon.svg'
             name: Config.options.light.night.automatic ? "night-light" : "moon"
-            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
         }
 
         MaterialSymbol {
@@ -46,7 +46,7 @@ QuickToggleButton {
             visible: !parent.usePlumpy || !plumpy.available
             iconSize: 20
             fill: toggled ? 1 : 0
-            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer1
+            color: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             text: buttonIcon
