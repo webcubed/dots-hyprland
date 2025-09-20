@@ -258,7 +258,7 @@ Inline w/ backslash and round brackets \\(e^{i\\pi} + 1 = 0\\)
         }
 
         StyledToolTip {
-            content: statusItem.description
+            text: statusItem.description
             extraVisibleCondition: false
             alternativeVisibleCondition: statusItem.containsMouse
         }

@@ -213,6 +213,7 @@ Singleton {
         property QtObject pixelSize: QtObject {
             property int smallest: 10
             property int smaller: 12
+            property int smallie: 13
             property int small: 15
             property int normal: 16
             property int large: 17
@@ -255,14 +256,8 @@ Singleton {
                     easing.bezierCurve: root.animation.elementMove.bezierCurve
                 }
             }
-            property Component colorAnimation: Component {
-                ColorAnimation {
-                    duration: root.animation.elementMove.duration
-                    easing.type: root.animation.elementMove.type
-                    easing.bezierCurve: root.animation.elementMove.bezierCurve
-                }
-            }
         }
+
         property QtObject elementMoveEnter: QtObject {
             property int duration: 400
             property int type: Easing.BezierSpline
@@ -276,6 +271,7 @@ Singleton {
                 }
             }
         }
+
         property QtObject elementMoveExit: QtObject {
             property int duration: 200
             property int type: Easing.BezierSpline
@@ -289,6 +285,7 @@ Singleton {
                 }
             }
         }
+
         property QtObject elementMoveFast: QtObject {
             property int duration: animationCurves.expressiveEffectsDuration
             property int type: Easing.BezierSpline
@@ -305,6 +302,21 @@ Singleton {
                     easing.bezierCurve: root.animation.elementMoveFast.bezierCurve
             }}
         }
+
+        property QtObject elementResize: QtObject {
+            property int duration: 400
+            property int type: Easing.BezierSpline
+            property list<real> bezierCurve: animationCurves.emphasized
+            property int velocity: 650
+            property Component numberAnimation: Component {
+                NumberAnimation {
+                    duration: root.animation.elementResize.duration
+                    easing.type: root.animation.elementResize.type
+                    easing.bezierCurve: root.animation.elementResize.bezierCurve
+                }
+            }
+        }
+
         property QtObject clickBounce: QtObject {
             property int duration: 200
             property int type: Easing.BezierSpline
@@ -316,11 +328,13 @@ Singleton {
                     easing.bezierCurve: root.animation.clickBounce.bezierCurve
             }}
         }
+        
         property QtObject scroll: QtObject {
             property int duration: 200
             property int type: Easing.BezierSpline
             property list<real> bezierCurve: animationCurves.standardDecel
         }
+
         property QtObject menuDecel: QtObject {
             property int duration: 350
             property int type: Easing.OutExpo

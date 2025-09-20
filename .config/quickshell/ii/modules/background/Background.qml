@@ -57,7 +57,7 @@ Variants {
         property real clockX: (modelData.width / 2)
         property real clockY: (modelData.height / 2)
         property var textHorizontalAlignment: {
-            if (Config.options.background.blur.enable && Config.options.background.blur.centerClock && GlobalStates.screenLocked)
+            if (Config.options.background.lockBlur.enable && Config.options.background.lockBlur.centerClock && GlobalStates.screenLocked)
                 return Text.AlignHCenter;
             if (clockX < screen.width / 3)
                 return Text.AlignLeft;
@@ -66,10 +66,13 @@ Variants {
             return Text.AlignHCenter;
         }
         // Colors
+        property bool shouldBlur: (GlobalStates.screenLocked && Config.options.background.lockBlur.enable)
         property color dominantColor: Appearance.colors.colPrimary
         property bool dominantColorIsDark: dominantColor.hslLightness < 0.5
-        property color colText: CF.ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
-        property bool shouldBlur: (GlobalStates.screenLocked && Config.options.background.blur.enable)
+        property color colText: (GlobalStates.screenLocked && shouldBlur) ? Appearance.colors.colOnLayer0 : CF.ColorUtils.colorWithLightness(Appearance.colors.colPrimary, (dominantColorIsDark ? 0.8 : 0.12))
+        Behavior on colText {
+            animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+        }
 
         // Layer props
         screen: modelData
@@ -168,7 +171,7 @@ Variants {
         // Wallpaper
         Image {
             id: wallpaper
-            visible: opacity > 0
+            visible: opacity > 0 && !blurLoader.active
             opacity: (status === Image.Ready && !bgRoot.wallpaperIsVideo) ? 1 : 0
             Behavior on opacity {
                 animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
@@ -227,9 +230,9 @@ Variants {
 
         Loader {
             id: blurLoader
-            active: Config.options.background.blur.enable && (GlobalStates.screenLocked || scaleAnim.running)
+            active: Config.options.background.lockBlur.enable && (GlobalStates.screenLocked || scaleAnim.running)
             anchors.fill: wallpaper
-            scale: GlobalStates.screenLocked ? Config.options.background.blur.extraZoom : 1
+            scale: GlobalStates.screenLocked ? Config.options.background.lockBlur.extraZoom : 1
             Behavior on scale {
                 NumberAnimation {
                     id: scaleAnim
@@ -240,10 +243,11 @@ Variants {
             }
             sourceComponent: GaussianBlur {
                 source: wallpaper
-                radius: GlobalStates.screenLocked ? Config.options.background.blur.radius : 0
+                radius: GlobalStates.screenLocked ? Config.options.background.lockBlur.radius : 0
                 samples: radius * 2 + 1
 
                 Rectangle {
+                    opacity: GlobalStates.screenLocked ? 1 : 0
                     anchors.fill: parent
                     color: CF.ColorUtils.transparentize(Appearance.colors.colLayer0, 0.7)
                 }
@@ -258,6 +262,7 @@ Variants {
                 left: wallpaper.left
                 top: wallpaper.top
                 horizontalCenter: undefined
+                verticalCenter: undefined
                 leftMargin: bgRoot.movableXSpace + ((root.fixedClockPosition ? root.fixedClockX : bgRoot.clockX * bgRoot.effectiveWallpaperScale) - implicitWidth / 2)
                 topMargin: {
                     if (bgRoot.shouldBlur)
@@ -273,13 +278,14 @@ Variants {
             }
             states: State {
                 name: "centered"
-                when: bgRoot.shouldBlur
+                when: bgRoot.shouldBlur && Config.options.background.lockBlur.centerClock
                 AnchorChanges {
                     target: clockLoader
                     anchors {
                         left: undefined
-                        horizontalCenter: wallpaper.horizontalCenter
                         right: undefined
+                        top: parent.top
+                        horizontalCenter: parent.horizontalCenter
                     }
                 }
             }
@@ -354,7 +360,7 @@ Variants {
                         leftMargin: -5
                         rightMargin: -5
                     }
-                    opacity: GlobalStates.screenLocked && (!Config.options.background.blur.enable || Config.options.background.blur.showLockedText) ? 1 : 0
+                    opacity: GlobalStates.screenLocked && (!Config.options.background.lockBlur.enable || Config.options.background.lockBlur.showLockedText) ? 1 : 0
                     visible: opacity > 0
                     Behavior on opacity {
                         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)

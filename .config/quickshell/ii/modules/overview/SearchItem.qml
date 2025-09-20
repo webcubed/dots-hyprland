@@ -280,7 +280,7 @@ RippleButton {
                     onClicked: modelData.execute()
 
                     StyledToolTip {
-                        content: modelData.name
+                        text: modelData.name
                     }
                 }
             }
