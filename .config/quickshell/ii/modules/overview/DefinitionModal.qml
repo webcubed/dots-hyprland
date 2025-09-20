@@ -418,9 +418,9 @@ FocusScope {
                     // Don’t capture focus for shortcuts; let overlay keep it
                     focus: false
                     onActiveFocusChanged: {
-                        if (!activeFocus && overlay.open) {
+                        if (!activeFocus && overlay.open)
                             overlay.forceActiveFocus();
-                        }
+
                     }
                 }
 
@@ -437,7 +437,7 @@ FocusScope {
                     onClicked: overlay.onCopyWord()
 
                     StyledToolTip {
-                        content: Translation.tr("Copy word")
+                        text: Translation.tr("Copy word")
                     }
 
                     contentItem: MaterialSymbol {
@@ -455,7 +455,7 @@ FocusScope {
                     onClicked: overlay.onCopyDefinition()
 
                     StyledToolTip {
-                        content: Translation.tr("Copy definition")
+                        text: Translation.tr("Copy definition")
                     }
 
                     contentItem: MaterialSymbol {
@@ -474,7 +474,7 @@ FocusScope {
                     onClicked: overlay.onPronounce()
 
                     StyledToolTip {
-                        content: Translation.tr("Pronounce")
+                        text: Translation.tr("Pronounce")
                     }
 
                     contentItem: MaterialSymbol {
