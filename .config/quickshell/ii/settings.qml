@@ -217,6 +217,9 @@ ApplicationWindow {
                     opacity: 1.0
 
                     active: Config.ready
+                    onStatusChanged: {
+                        console.log("Settings page loader status:", pageLoader.status, "source:", pageLoader.source)
+                    }
                     Component.onCompleted: {
                         source = root.pages[0].component
                     }

@@ -1,9 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 import qs
-import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 
 ContentPage {
     forceWidth: true
@@ -33,6 +33,7 @@ ContentPage {
 
             ConfigRow {
                 uniform: true
+
                 ConfigSwitch {
                     text: Translation.tr("Depends on workspace")
                     checked: Config.options.background.parallax.enableWorkspace
@@ -40,6 +41,7 @@ ContentPage {
                         Config.options.background.parallax.enableWorkspace = checked;
                     }
                 }
+
                 ConfigSwitch {
                     text: Translation.tr("Depends on sidebars")
                     checked: Config.options.background.parallax.enableSidebar
@@ -47,7 +49,9 @@ ContentPage {
                         Config.options.background.parallax.enableSidebar = checked;
                     }
                 }
+
             }
+
             ConfigSpinBox {
                 text: Translation.tr("Preferred wallpaper zoom (%)")
                 value: Config.options.background.parallax.workspaceZoom * 100
@@ -58,10 +62,12 @@ ContentPage {
                     Config.options.background.parallax.workspaceZoom = value / 100;
                 }
             }
+
         }
 
         ContentSubsection {
             title: Translation.tr("Network")
+
             ConfigSwitch {
                 text: Translation.tr("Show network in bar")
                 checked: Config.options.bar.network.enable
@@ -69,7 +75,9 @@ ContentPage {
                     Config.options.bar.network.enable = checked;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -86,6 +94,7 @@ ContentPage {
 
         ConfigRow {
             uniform: true
+
             ConfigSwitch {
                 text: Translation.tr("Hover to reveal")
                 checked: Config.options.dock.hoverToReveal
@@ -93,6 +102,7 @@ ContentPage {
                     Config.options.dock.hoverToReveal = checked;
                 }
             }
+
             ConfigSwitch {
                 text: Translation.tr("Pinned on startup")
                 checked: Config.options.dock.pinnedOnStartup
@@ -100,7 +110,9 @@ ContentPage {
                     Config.options.dock.pinnedOnStartup = checked;
                 }
             }
+
         }
+
         ConfigSwitch {
             text: Translation.tr("Tint app icons")
             checked: Config.options.dock.monochromeIcons
@@ -108,6 +120,7 @@ ContentPage {
                 Config.options.dock.monochromeIcons = checked;
             }
         }
+
     }
 
     ContentSection {
@@ -138,6 +151,7 @@ ContentPage {
                         Config.options.background.lockBlur.centerClock = checked;
                     }
                 }
+
                 ConfigSwitch {
                     enabled: Config.options.background.lockBlur.enable
                     font.pixelSize: Appearance.font.pixelSize.large
@@ -147,9 +161,11 @@ ContentPage {
                         Config.options.background.lockBlur.showLockedText = checked;
                     }
                 }
+
             }
 
         }
+
     }
 
     ContentSection {
@@ -166,6 +182,7 @@ ContentPage {
                 Config.options.notifications.timeout = value;
             }
         }
+
     }
 
     ContentSection {
@@ -178,16 +195,20 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.sidebar.keepRightSidebarLoaded = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("When enabled keeps the content of the right sidebar loaded to reduce the delay when opening,\nat the cost of around 15MB of consistent RAM usage. Delay significance depends on your system's performance.\nUsing a custom kernel like linux-cachyos might help")
             }
+
         }
 
         ContentSubsection {
             title: Translation.tr("Corner open")
             tooltip: Translation.tr("Allows you to open sidebars by clicking or hovering screen corners regardless of bar position")
+
             ConfigRow {
                 uniform: true
+
                 ConfigSwitch {
                     text: Translation.tr("Enable")
                     checked: Config.options.sidebar.cornerOpen.enable
@@ -195,6 +216,7 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.enable = checked;
                     }
                 }
+
                 ConfigSwitch {
                     text: Translation.tr("Hover to trigger")
                     checked: Config.options.sidebar.cornerOpen.clickless
@@ -205,10 +227,14 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("When this is off you'll have to click")
                     }
+
                 }
+
             }
+
             ConfigRow {
                 uniform: true
+
                 ConfigSwitch {
                     text: Translation.tr("Place at bottom")
                     checked: Config.options.sidebar.cornerOpen.bottom
@@ -219,7 +245,9 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Place the corners to trigger at the bottom")
                     }
+
                 }
+
                 ConfigSwitch {
                     text: Translation.tr("Value scroll")
                     checked: Config.options.sidebar.cornerOpen.valueScroll
@@ -230,8 +258,11 @@ ContentPage {
                     StyledToolTip {
                         text: Translation.tr("Brightness and volume")
                     }
+
                 }
+
             }
+
             ConfigSwitch {
                 text: Translation.tr("Visualize region")
                 checked: Config.options.sidebar.cornerOpen.visualize
@@ -239,6 +270,7 @@ ContentPage {
                     Config.options.sidebar.cornerOpen.visualize = checked;
                 }
             }
+
             ConfigRow {
                 ConfigSpinBox {
                     text: Translation.tr("Region width")
@@ -250,6 +282,7 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.cornerRegionWidth = value;
                     }
                 }
+
                 ConfigSpinBox {
                     text: Translation.tr("Region height")
                     value: Config.options.sidebar.cornerOpen.cornerRegionHeight
@@ -260,8 +293,29 @@ ContentPage {
                         Config.options.sidebar.cornerOpen.cornerRegionHeight = value;
                     }
                 }
+
             }
+
         }
+
+        ContentSubsection {
+            title: Translation.tr("Right sidebar icons")
+
+            ConfigSwitch {
+                text: Translation.tr("Use Icons8 Plumpy icons for quick toggles")
+                checked: Config.options.sidebar.icons.usePlumpyRightToggles
+                onCheckedChanged: {
+                    Config.options.sidebar.icons.usePlumpyRightToggles = checked;
+                }
+
+                StyledToolTip {
+                    text: Translation.tr("Only affects the right sidebar quick toggle buttons. Requires SVGs in assets/icons8/plumpy. Falls back to Material icons when missing.")
+                }
+
+            }
+
+        }
+
     }
 
     ContentSection {
@@ -278,6 +332,7 @@ ContentPage {
                 Config.options.osd.timeout = value;
             }
         }
+
     }
 
     ContentSection {
@@ -291,6 +346,7 @@ ContentPage {
                 Config.options.overview.enable = checked;
             }
         }
+
         ConfigSpinBox {
             text: Translation.tr("Scale (%)")
             value: Config.options.overview.scale * 100
@@ -301,8 +357,10 @@ ContentPage {
                 Config.options.overview.scale = value / 100;
             }
         }
+
         ConfigRow {
             uniform: true
+
             ConfigSpinBox {
                 text: Translation.tr("Rows")
                 value: Config.options.overview.rows
@@ -313,6 +371,7 @@ ContentPage {
                     Config.options.overview.rows = value;
                 }
             }
+
             ConfigSpinBox {
                 text: Translation.tr("Columns")
                 value: Config.options.overview.columns
@@ -323,7 +382,9 @@ ContentPage {
                     Config.options.overview.columns = value;
                 }
             }
+
         }
+
     }
 
     ContentSection {
@@ -336,10 +397,13 @@ ContentPage {
             onCheckedChanged: {
                 Config.options.screenshotTool.showContentRegions = checked;
             }
+
             StyledToolTip {
                 text: Translation.tr("Such regions could be images or parts of the screen that have some containment.\nMight not always be accurate.\nThis is done with an image processing algorithm run locally and no AI is used.")
             }
+
         }
+
     }
 
 }

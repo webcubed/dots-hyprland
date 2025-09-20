@@ -1498,14 +1498,28 @@ Item {
 					visible: !GlobalStates.lyricsModeActive
 					opacity: visible ? 1 : 0
 					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
-					contentItem: MaterialSymbol {
+					contentItem: Item {
 						anchors.centerIn: parent
-						iconSize: 13
-						fill: 1
-						horizontalAlignment: Text.AlignHCenter
-						verticalAlignment: Text.AlignVCenter
-						color: Appearance.colors.colOnSecondaryContainer
-						text: "skip_previous"
+						width: 13; height: 13
+						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+						PlumpyIcon {
+							id: islandPrevPlumpy
+							anchors.centerIn: parent
+							visible: parent.usePlumpy
+							iconSize: parent.width
+							name: "previous"
+							primaryColor: Appearance.colors.colOnSecondaryContainer
+						}
+						MaterialSymbol {
+							anchors.centerIn: parent
+							visible: !parent.usePlumpy || !islandPrevPlumpy.available
+							iconSize: parent.width
+							fill: 1
+							horizontalAlignment: Text.AlignHCenter
+							verticalAlignment: Text.AlignVCenter
+							color: Appearance.colors.colOnSecondaryContainer
+							text: "skip_previous"
+						}
 					}
 				}
 				RippleButton {
@@ -1526,14 +1540,28 @@ Item {
 						NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } 
 					}
 					
-					contentItem: MaterialSymbol {
+					contentItem: Item {
 						anchors.centerIn: parent
-						iconSize: 13
-						fill: 1
-						horizontalAlignment: Text.AlignHCenter
-						verticalAlignment: Text.AlignVCenter
-						color: Appearance.colors.colOnPrimary
-						text: MprisController.activePlayer?.isPlaying ? "pause" : "play_arrow"
+						width: 13; height: 13
+						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+						PlumpyIcon {
+							id: islandPlayPlumpy
+							anchors.centerIn: parent
+							visible: parent.usePlumpy
+							iconSize: parent.width
+							name: MprisController.activePlayer?.isPlaying ? "pause" : "play"
+							primaryColor: Appearance.colors.colOnPrimary
+						}
+						MaterialSymbol {
+							anchors.centerIn: parent
+							visible: !parent.usePlumpy || !islandPlayPlumpy.available
+							iconSize: parent.width
+							fill: 1
+							horizontalAlignment: Text.AlignHCenter
+							verticalAlignment: Text.AlignVCenter
+							color: Appearance.colors.colOnPrimary
+							text: MprisController.activePlayer?.isPlaying ? "pause" : "play_arrow"
+						}
 					}
 				}
 				RippleButton {
@@ -1548,14 +1576,28 @@ Item {
 					visible: !GlobalStates.lyricsModeActive
 					opacity: visible ? 1 : 0
 					Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.InOutQuad } }
-					contentItem: MaterialSymbol {
+					contentItem: Item {
 						anchors.centerIn: parent
-						iconSize: 13
-						fill: 1
-						horizontalAlignment: Text.AlignHCenter
-						verticalAlignment: Text.AlignVCenter
-						color: Appearance.colors.colOnSecondaryContainer
-						text: "skip_next"
+						width: 13; height: 13
+						readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+						PlumpyIcon {
+							id: islandNextPlumpy
+							anchors.centerIn: parent
+							visible: parent.usePlumpy
+							iconSize: parent.width
+							name: "skip"
+							primaryColor: Appearance.colors.colOnSecondaryContainer
+						}
+						MaterialSymbol {
+							anchors.centerIn: parent
+							visible: !parent.usePlumpy || !islandNextPlumpy.available
+							iconSize: parent.width
+							fill: 1
+							horizontalAlignment: Text.AlignHCenter
+							verticalAlignment: Text.AlignVCenter
+							color: Appearance.colors.colOnSecondaryContainer
+							text: "skip_next"
+						}
 					}
 				}
 			}

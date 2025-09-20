@@ -227,12 +227,26 @@ Item {
                                         baseWidth: windowControlsHeight
                                         baseHeight: windowControlsHeight
                                         buttonRadius: Appearance.rounding.full
-                                        contentItem: MaterialSymbol {
+                                        contentItem: Item {
                                             anchors.centerIn: parent
-                                            horizontalAlignment: Text.AlignHCenter
-                                            text: "close"
-                                            iconSize: Appearance.font.pixelSize.normal
-                                            color: Appearance.m3colors.m3onSurface
+                                            width: Appearance.font.pixelSize.normal; height: width
+                                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                                            PlumpyIcon {
+                                                id: dockClosePlumpy
+                                                anchors.centerIn: parent
+                                                visible: parent.usePlumpy
+                                                iconSize: parent.width
+                                                name: "x"
+                                                primaryColor: Appearance.m3colors.m3onSurface
+                                            }
+                                            MaterialSymbol {
+                                                anchors.centerIn: parent
+                                                visible: !parent.usePlumpy || !dockClosePlumpy.available
+                                                horizontalAlignment: Text.AlignHCenter
+                                                text: "close"
+                                                iconSize: Appearance.font.pixelSize.normal
+                                                color: Appearance.m3colors.m3onSurface
+                                            }
                                         }
                                         onClicked: {
                                             windowButton.modelData?.close();

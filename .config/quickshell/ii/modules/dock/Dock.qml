@@ -112,11 +112,25 @@ Scope { // Scope
                                     buttonRadius: Appearance.rounding.normal
                                     toggled: root.pinned
                                     onClicked: root.pinned = !root.pinned
-                                    contentItem: MaterialSymbol {
-                                        text: "keep"
-                                        horizontalAlignment: Text.AlignHCenter
-                                        iconSize: Appearance.font.pixelSize.larger
-                                        color: root.pinned ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer0
+                                    contentItem: Item {
+                                        anchors.fill: parent
+                                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                                        PlumpyIcon {
+                                            id: dockPinPlumpy
+                                            anchors.centerIn: parent
+                                            visible: parent.usePlumpy
+                                            iconSize: Appearance.font.pixelSize.larger
+                                            name: "pin"
+                                            primaryColor: root.pinned ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer0
+                                        }
+                                        MaterialSymbol {
+                                            anchors.centerIn: parent
+                                            visible: !parent.usePlumpy || !dockPinPlumpy.available
+                                            text: "keep"
+                                            horizontalAlignment: Text.AlignHCenter
+                                            iconSize: Appearance.font.pixelSize.larger
+                                            color: root.pinned ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer0
+                                        }
                                     }
                                 }
                             }
@@ -131,12 +145,25 @@ Scope { // Scope
                                 onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
                                 topInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 bottomInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
-                                contentItem: MaterialSymbol {
+                                contentItem: Item {
                                     anchors.fill: parent
-                                    horizontalAlignment: Text.AlignHCenter
-                                    font.pixelSize: parent.width / 2
-                                    text: "apps"
-                                    color: Appearance.colors.colOnLayer0
+                                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                                    PlumpyIcon {
+                                        id: dockAppsPlumpy
+                                        anchors.centerIn: parent
+                                        visible: parent.usePlumpy
+                                        iconSize: Math.floor(parent.width / 2)
+                                        name: "apps"
+                                        primaryColor: Appearance.colors.colOnLayer0
+                                    }
+                                    MaterialSymbol {
+                                        anchors.centerIn: parent
+                                        visible: !parent.usePlumpy || !dockAppsPlumpy.available
+                                        horizontalAlignment: Text.AlignHCenter
+                                        font.pixelSize: parent.width / 2
+                                        text: "apps"
+                                        color: Appearance.colors.colOnLayer0
+                                    }
                                 }
                             }
                         }

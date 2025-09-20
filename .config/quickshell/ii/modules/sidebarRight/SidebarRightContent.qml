@@ -90,6 +90,28 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Reload Hyprland & Quickshell")
                         }
+                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        contentItem: Item {
+                            anchors.centerIn: parent
+                            width: 20; height: 20
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+
+                            PlumpyIcon {
+                                id: restartPlumpy
+                                anchors.centerIn: parent
+                                visible: parent.usePlumpy
+                                iconSize: 20
+                                name: "restart"
+                                primaryColor: Appearance.colors.colOnLayer0
+                            }
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: !parent.usePlumpy || !restartPlumpy.available
+                                iconSize: 20
+                                color: Appearance.colors.colOnLayer0
+                                text: "restart_alt"
+                            }
+                        }
                     }
                     QuickToggleButton {
                         toggled: false
@@ -101,6 +123,28 @@ Item {
                         StyledToolTip {
                             text: Translation.tr("Settings")
                         }
+                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        contentItem: Item {
+                            anchors.centerIn: parent
+                            width: 20; height: 20
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+
+                            PlumpyIcon {
+                                id: settingsPlumpy
+                                anchors.centerIn: parent
+                                visible: parent.usePlumpy
+                                iconSize: 20
+                                name: "settings"
+                                primaryColor: Appearance.colors.colOnLayer0
+                            }
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: !parent.usePlumpy || !settingsPlumpy.available
+                                iconSize: 20
+                                color: Appearance.colors.colOnLayer0
+                                text: "settings"
+                            }
+                        }
                     }
                     QuickToggleButton {
                         toggled: false
@@ -110,6 +154,28 @@ Item {
                         }
                         StyledToolTip {
                             text: Translation.tr("Session")
+                        }
+                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        contentItem: Item {
+                            anchors.centerIn: parent
+                            width: 20; height: 20
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+
+                            PlumpyIcon {
+                                id: powerPlumpy
+                                anchors.centerIn: parent
+                                visible: parent.usePlumpy
+                                iconSize: 20
+                                name: "power"
+                                primaryColor: Appearance.colors.colOnLayer0
+                            }
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: !parent.usePlumpy || !powerPlumpy.available
+                                iconSize: 20
+                                color: Appearance.colors.colOnLayer0
+                                text: "power_settings_new"
+                            }
                         }
                     }
                 }

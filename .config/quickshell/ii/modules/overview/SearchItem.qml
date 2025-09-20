@@ -26,6 +26,21 @@ RippleButton {
     property string bigText: entry?.bigText ?? ""
     property string materialSymbol: entry?.materialSymbol ?? ""
     property string cliphistRawString: entry?.cliphistRawString ?? ""
+    // Reuse the global flag for now (controls Plumpy usage elsewhere too)
+    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+    // Map a handful of common Material icon names to Plumpy filenames
+    function plumpyFromMaterial(name) {
+        switch (name) {
+        case 'calculate': return 'math';
+        case 'terminal': return 'terminal';
+        case 'settings_suggest': return 'tune';
+        case 'video_settings': return 'tune';
+        case 'menu_book': return 'translation';
+        case 'check': return 'check';
+        case 'content_copy': return 'clipboard-approve';
+        default: return '';
+        }
+    }
     
     visible: root.entryShown
     property int horizontalMargin: 10
@@ -143,10 +158,25 @@ RippleButton {
 
         Component {
             id: materialSymbolComponent
-            MaterialSymbol {
-                text: root.materialSymbol
-                iconSize: 30
-                color: Appearance.m3colors.m3onSurface
+            Item {
+                implicitWidth: 30
+                implicitHeight: 30
+                // Prefer Plumpy when a mapping exists, else use Material
+                PlumpyIcon {
+                    id: plumpyMs
+                    anchors.centerIn: parent
+                    visible: root.usePlumpy && name !== ''
+                    iconSize: 30
+                    name: root.plumpyFromMaterial(root.materialSymbol)
+                    primaryColor: Appearance.m3colors.m3onSurface
+                }
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !plumpyMs.visible || !plumpyMs.available
+                    text: root.materialSymbol
+                    iconSize: 30
+                    color: Appearance.m3colors.m3onSurface
+                }
             }
         }
 
@@ -176,15 +206,24 @@ RippleButton {
                     visible: itemName == Quickshell.clipboardText && root.cliphistRawString
                     active: itemName == Quickshell.clipboardText && root.cliphistRawString
                     sourceComponent: Rectangle {
-                        implicitWidth: activeText.implicitHeight
-                        implicitHeight: activeText.implicitHeight
+                        readonly property int glyphSize: Appearance.font.pixelSize.normal
+                        implicitWidth: glyphSize
+                        implicitHeight: glyphSize
                         radius: Appearance.rounding.full
                         color: Appearance.colors.colPrimary
-                        MaterialSymbol {
-                            id: activeText
+                        PlumpyIcon {
+                            id: copiedCheckPlumpy
                             anchors.centerIn: parent
-                            text: "check"
-                            font.pixelSize: Appearance.font.pixelSize.normal
+                            visible: root.usePlumpy
+                            iconSize: parent.glyphSize
+                            name: 'check'
+                            primaryColor: Appearance.m3colors.m3onPrimary
+                        }
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            visible: !root.usePlumpy || !copiedCheckPlumpy.available
+                            text: 'check'
+                            font.pixelSize: parent.glyphSize
                             color: Appearance.m3colors.m3onPrimary
                         }
                     }
@@ -261,10 +300,24 @@ RippleButton {
                         Loader {
                             anchors.centerIn: parent
                             active: !(actionButton.iconName && actionButton.iconName !== "") || actionButton.materialIconName
-                            sourceComponent: MaterialSymbol {
-                                text: actionButton.materialIconName || "video_settings"
-                                font.pixelSize: Appearance.font.pixelSize.hugeass
-                                color: Appearance.m3colors.m3onSurface
+                            sourceComponent: Item {
+                                implicitWidth: Appearance.font.pixelSize.hugeass
+                                implicitHeight: Appearance.font.pixelSize.hugeass
+                                PlumpyIcon {
+                                    id: actionPlumpy
+                                    anchors.centerIn: parent
+                                    visible: root.usePlumpy && name !== ''
+                                    iconSize: Appearance.font.pixelSize.hugeass
+                                    name: root.plumpyFromMaterial(actionButton.materialIconName || 'video_settings')
+                                    primaryColor: Appearance.m3colors.m3onSurface
+                                }
+                                MaterialSymbol {
+                                    anchors.centerIn: parent
+                                    visible: !actionPlumpy.visible || !actionPlumpy.available
+                                    text: actionButton.materialIconName || 'video_settings'
+                                    font.pixelSize: Appearance.font.pixelSize.hugeass
+                                    color: Appearance.m3colors.m3onSurface
+                                }
                             }
                         }
                         Loader {

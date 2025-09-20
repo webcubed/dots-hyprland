@@ -303,14 +303,39 @@ Item { // Wrapper
             RowLayout {
                 id: searchBar
                 spacing: 5
-                MaterialSymbol {
-                    id: searchIcon
+                Item {
+                    id: searchIconWrap
                     Layout.leftMargin: 15
-                    iconSize: Appearance.font.pixelSize.huge
-                    color: Appearance.m3colors.m3onSurface
-                    text: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? 'content_paste_search'
+                    implicitWidth: Appearance.font.pixelSize.huge
+                    implicitHeight: Appearance.font.pixelSize.huge
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    readonly property string msText: root.searchingText.startsWith(Config.options.search.prefix.clipboard) ? 'content_paste_search'
                         : (root.searchingText.startsWith('d ') ? 'menu_book'
                         : (root.searchingText.startsWith('ud ') ? 'forum' : 'search'))
+                    function plumpyName() {
+                        switch (msText) {
+                        case 'content_paste_search': return 'searchbar';
+                        case 'menu_book': return 'translation';
+                        case 'forum': return 'chat';
+                        case 'search': return 'search';
+                        default: return '';
+                        }
+                    }
+                    PlumpyIcon {
+                        id: searchPlumpy
+                        anchors.centerIn: parent
+                        visible: searchIconWrap.usePlumpy && name !== ''
+                        iconSize: parent.implicitWidth
+                        name: searchIconWrap.plumpyName()
+                        primaryColor: Appearance.m3colors.m3onSurface
+                    }
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        visible: !searchPlumpy.visible || !searchPlumpy.available
+                        iconSize: parent.implicitWidth
+                        color: Appearance.m3colors.m3onSurface
+                        text: searchIconWrap.msText
+                    }
                 }
                 TextField { // Search box
                     id: searchInput

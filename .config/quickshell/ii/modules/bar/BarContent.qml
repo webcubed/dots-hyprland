@@ -338,10 +338,24 @@ Item { // Bar content region
                         Behavior on Layout.rightMargin {
                             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                         }
-                        MaterialSymbol {
-                            text: "volume_off"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: rightSidebarButton.colText
+                        Item {
+                            width: Appearance.font.pixelSize.larger; height: width
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            PlumpyIcon {
+                                id: barVolMutePlumpy
+                                anchors.centerIn: parent
+                                visible: parent.usePlumpy
+                                iconSize: parent.width
+                                name: "speaker-mute"
+                                primaryColor: rightSidebarButton.colText
+                            }
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: !parent.usePlumpy || !barVolMutePlumpy.available
+                                text: "volume_off"
+                                iconSize: parent.width
+                                color: rightSidebarButton.colText
+                            }
                         }
                     }
                     Revealer {
@@ -351,10 +365,24 @@ Item { // Bar content region
                         Behavior on Layout.rightMargin {
                             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
                         }
-                        MaterialSymbol {
-                            text: "mic_off"
-                            iconSize: Appearance.font.pixelSize.larger
-                            color: rightSidebarButton.colText
+                        Item {
+                            width: Appearance.font.pixelSize.larger; height: width
+                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            PlumpyIcon {
+                                id: barMicMutePlumpy
+                                anchors.centerIn: parent
+                                visible: parent.usePlumpy
+                                iconSize: parent.width
+                                name: "mic-mute"
+                                primaryColor: rightSidebarButton.colText
+                            }
+                            MaterialSymbol {
+                                anchors.centerIn: parent
+                                visible: !parent.usePlumpy || !barMicMutePlumpy.available
+                                text: "mic_off"
+                                iconSize: parent.width
+                                color: rightSidebarButton.colText
+                            }
                         }
                     }
                     Loader {
@@ -374,17 +402,50 @@ Item { // Bar content region
                             }
                         }
                     }
-                    MaterialSymbol {
+                    Item {
                         Layout.rightMargin: indicatorsRowLayout.realSpacing
-                        text: Network.materialSymbol
-                        iconSize: Appearance.font.pixelSize.larger
-                        color: rightSidebarButton.colText
+                        width: Appearance.font.pixelSize.larger; height: width
+                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                        PlumpyIcon {
+                            id: barWifiPlumpy
+                            anchors.centerIn: parent
+                            visible: parent.usePlumpy
+                            iconSize: parent.width
+                            name: {
+                                if (Network.ethernet) return "lan"; // optional if provided later
+                                if (!Network.wifiEnabled) return "wifi-off";
+                                const s = Network.networkStrength;
+                                return s > 80 ? "wifi-4" : s > 60 ? "wifi-3" : s > 40 ? "wifi-2" : s > 20 ? "wifi-1" : "wifi-0";
+                            }
+                            primaryColor: rightSidebarButton.colText
+                        }
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            visible: !parent.usePlumpy || !barWifiPlumpy.available
+                            text: Network.materialSymbol
+                            iconSize: parent.width
+                            color: rightSidebarButton.colText
+                        }
                     }
-                    MaterialSymbol {
-                        text: BluetoothStatus.connected ? "bluetooth_connected" : BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
-                        iconSize: Appearance.font.pixelSize.larger
+                    Item {
                         Layout.rightMargin: indicatorsRowLayout.realSpacing
-                        color: rightSidebarButton.colText
+                        width: Appearance.font.pixelSize.larger; height: width
+                        readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                        PlumpyIcon {
+                            id: barBtPlumpy
+                            anchors.centerIn: parent
+                            visible: parent.usePlumpy
+                            iconSize: parent.width
+                            name: BluetoothStatus.enabled ? (BluetoothStatus.connected ? "bluetooth-connected" : "bluetooth") : "bluetooth"
+                            primaryColor: rightSidebarButton.colText
+                        }
+                        MaterialSymbol {
+                            anchors.centerIn: parent
+                            visible: !parent.usePlumpy || !barBtPlumpy.available
+                            text: BluetoothStatus.connected ? "bluetooth_connected" : BluetoothStatus.enabled ? "bluetooth" : "bluetooth_disabled"
+                            iconSize: parent.width
+                            color: rightSidebarButton.colText
+                        }
                     }
                     // Battery as the rightmost item inside the button (Row is RightToLeft)
                     BatteryIndicator {

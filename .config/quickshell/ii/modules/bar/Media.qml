@@ -62,12 +62,26 @@ Item {
                 width: mediaCircProg.implicitSize
                 height: mediaCircProg.implicitSize
                 
-                MaterialSymbol {
+                Item {
                     anchors.centerIn: parent
-                    fill: 1
-                    text: activePlayer?.isPlaying ? "pause" : "music_note"
-                    iconSize: Appearance.font.pixelSize.normal
-                    color: Appearance.m3colors.m3onSecondaryContainer
+                    width: Appearance.font.pixelSize.normal; height: width
+                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                    PlumpyIcon {
+                        id: mediaCircPlumpy
+                        anchors.centerIn: parent
+                        visible: parent.usePlumpy
+                        iconSize: parent.width
+                        name: activePlayer?.isPlaying ? "pause" : "play"
+                        primaryColor: Appearance.m3colors.m3onSecondaryContainer
+                    }
+                    MaterialSymbol {
+                        anchors.centerIn: parent
+                        visible: !parent.usePlumpy || !mediaCircPlumpy.available
+                        fill: 1
+                        text: activePlayer?.isPlaying ? "pause" : "music_note"
+                        iconSize: Appearance.font.pixelSize.normal
+                        color: Appearance.m3colors.m3onSecondaryContainer
+                    }
                 }
             }
         }
