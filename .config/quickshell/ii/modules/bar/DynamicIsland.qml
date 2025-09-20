@@ -37,12 +37,17 @@ Item {
 
 	// State properties
 	property bool mediaActive: MprisController.activePlayer?.isPlaying || MprisController.activePlayer?.playbackState === MprisPlaybackState.Paused
+	// Timer state used to show a left-side indicator (icon + time)
 	property bool timerActive: TimerService.pomodoroRunning || TimerService.stopwatchRunning
-	property bool showActiveWindow: !mediaActive && !timerActive
+	// Do not hide active window when timers are running; timers now occupy a left slot
+	property bool showActiveWindow: !mediaActive
 
 	// Dynamic width properties
 	property real baseWidth: 320  // Wider default to accommodate music icon + text
-	property real maxWidth: 640   // Allow more room before clipping
+	// Base max width (no timers). Additional allowance dynamically added equal to timer indicator width.
+	property real maxWidthNoTimer: 640
+	readonly property real timerAllowance: timerActive ? (((timerIndicatorSlot && timerIndicatorSlot.implicitWidth) || 0) + rowSpacing) : 0
+	readonly property real effectiveMaxWidth: maxWidthNoTimer + timerAllowance
 	property real minWidth: 300   // Ensure controls never overflow
 	property real targetWidth: baseWidth
 	// Set true when current media title qualifies as "short" by character count
@@ -147,6 +152,18 @@ Item {
 		var newWidth = calculateContentWidth()
 		targetWidth = newWidth
 	}
+
+	// Debounced width recalculation to avoid chattering and ensure measurement has settled
+	function scheduleWidthRecalc() {
+		widthRecalcTimer.restart()
+	}
+
+	Timer {
+		id: widthRecalcTimer
+		interval: 1
+		repeat: false
+		onTriggered: dynamicIsland.updateWidth()
+	}
 	
 	// Initialize width on component creation
 	Component.onCompleted: {
@@ -187,10 +204,12 @@ Item {
         z: 350
         anchors.fill: parent // ensure overlay covers the whole island
         clip: true
-        // Keep some space on the left for the clipboard icon area.
-        // Use a fixed, safe gutter to avoid any timing issues with layout: icon is 18px, slot ~22px, spacing 8px
-        //  => 22 + 8 + extra padding = 48
-        property int leftReserve: 48
+		// Keep some space on the left for timer and clipboard icon area to avoid overlap
+		// Compute dynamically: timerSlot + spacing + clipboardSlot + small padding
+		property int leftReserve: (
+			(dynamicIsland.timerActive ? ((timerIndicatorSlot?.implicitWidth || 0) + 6) : 0) +
+			(ClipboardService.hasItem ? (22 + 6) : 0) + 8
+		)
         anchors.leftMargin: leftReserve
 
         // Enable dragging out by dragging on the preview overlay
@@ -367,6 +386,15 @@ Item {
 		}
 	}
 
+	// Watch for timer changes to adjust width for left-side indicator
+	Connections {
+		target: TimerService
+		function onPomodoroRunningChanged() { Qt.callLater(function(){ dynamicIsland.updateWidth() }) }
+		function onStopwatchRunningChanged() { Qt.callLater(function(){ dynamicIsland.updateWidth() }) }
+		function onPomodoroSecondsLeftChanged() { /* no width change unless digits grow; safe to update occasionally */ Qt.callLater(function(){ dynamicIsland.updateWidth() }) }
+		function onStopwatchTimeChanged() { Qt.callLater(function(){ dynamicIsland.updateWidth() }) }
+	}
+
 	// Watch for active window switches
 	Connections {
 		target: ToplevelManager
@@ -379,7 +407,7 @@ Item {
 
 	// Calculate required width based on content
 	function calculateContentWidth() {
-    // Use shared metrics so calc matches layout exactly
+	// Use shared metrics so calc matches layout exactly
     const outerPadding = dynamicIsland.outerPadding
     const rowSpacing = dynamicIsland.rowSpacing
     const controlButtons = dynamicIsland.controlButtons
@@ -387,19 +415,22 @@ Item {
     const progressPreferred = (titleContainer?.titleHovered && titleContainer?.titleTruncated)
         ? dynamicIsland.progressHover
         : dynamicIsland.progressNormal
-    // If clipboard inline text is present AND we're hovering the clipboard icon/popup, override all other content
+	// Pre-compute any left timer slot width addition
+	const timerAdd = dynamicIsland.timerActive ? (((timerIndicatorSlot && timerIndicatorSlot.implicitWidth) || 0) + rowSpacing) : 0
+	// If clipboard inline text is present AND we're hovering the clipboard icon/popup, override all other content
     const clipboardHover = dynamicIsland.clipboardHoverActive
-    if (ClipboardService.kind === "text" && clipboardHover) {
-        const minWidth = dynamicIsland.minWidth
-        const maxWidth = dynamicIsland.maxWidth
+	if (ClipboardService.kind === "text" && clipboardHover) {
+		const minWidth = dynamicIsland.minWidth
+		const maxWidth = dynamicIsland.effectiveMaxWidth
         const clipIconSlot = ClipboardService.hasItem ? 22 : 0
         // baseline measured clipboard text width
         let textWidth = clipboardTextMeasure?.contentWidth || 0
         // Desired: outer padding + icon slot + spacing + text width
-        let desired = outerPadding + clipIconSlot + (clipIconSlot > 0 ? rowSpacing : 0) + Math.max(60, textWidth)
-        let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
+		let desired = outerPadding + timerAdd + clipIconSlot + (clipIconSlot > 0 ? rowSpacing : 0) + Math.max(60, textWidth)
+		let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
         return clamped
     }
+
 
 		if (mediaActive) {
 			// Measure the media title's actual implicit width if available
@@ -413,8 +444,8 @@ Item {
 
 			// In lyrics mode, progress is hidden. Otherwise, shrink only when hover+truncated
 			// Evaluate hover/truncation state up-front for consistent logic
-			const hoveringTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && titleContainer?.titleTruncated)
-			const hoveringNotTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && !titleContainer?.titleTruncated)
+			const hoveringTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && (titleContainer?.titleTruncatedLatched || titleContainer?.titleTruncated))
+			const hoveringNotTruncated = GlobalStates.lyricsModeActive ? false : !!(titleContainer?.titleHovered && !(titleContainer?.titleTruncatedLatched || titleContainer?.titleTruncated))
 			// Compute desired widths for normal (non-hover) and hover states explicitly
 			const normalProgress = GlobalStates.lyricsModeActive ? 0 : dynamicIsland.progressNormal
 			const hoverProgress = GlobalStates.lyricsModeActive ? 0 : (hoveringTruncated ? dynamicIsland.progressHover : dynamicIsland.progressNormal)
@@ -428,15 +459,15 @@ Item {
 
 			// In lyrics mode, ignore title hover/truncation behavior entirely (handled above)
 
-			// If the full title fits, use that width. Otherwise, let hover logic take over.
-			const fullWidthFits = desiredNormal < maxWidth
+			// If the full title fits, use that width. Otherwise, evaluate hover width too.
+			const fullWidthFits = desiredNormal < dynamicIsland.effectiveMaxWidth
 			dynamicIsland.shortTitleActive = fullWidthFits // Reuse this flag to control layout
 
-			let desired = fullWidthFits
-				? desiredNormal
-				: (hoveringTruncated ? desiredHover : desiredNormal)
+			// On hover, never shrink the island due to reduced progress - pick the larger width
+			const isHover = (!GlobalStates.lyricsModeActive && !!titleContainer?.titleHovered)
+			let desired = (isHover ? Math.max(desiredNormal, desiredHover) : desiredNormal) + timerAdd
 
-			const clamped = Math.max(minWidth, Math.min(desired, maxWidth))
+			const clamped = Math.max(minWidth, Math.min(desired, dynamicIsland.effectiveMaxWidth))
 			return clamped
 		} else if (showActiveWindow) {
 			// Prefer baseline-measured title width (hidden measurer), then fallback to implicitWidth
@@ -446,12 +477,12 @@ Item {
 			let fallbackText = root.activeWindow?.title || ""
 			let windowWidth = Math.max(60, measured > 0 ? measured : fallbackText.length * 7.5)
 			// Active window needs less outer padding than media (controls/progress absent)
-			let desired = windowWidth + 12
-			let clamped = Math.max(minWidth, Math.min(maxWidth, desired))
+			let desired = windowWidth + 12 + timerAdd
+			let clamped = Math.max(minWidth, Math.min(dynamicIsland.effectiveMaxWidth, desired))
 			return clamped
 		}
 		dynamicIsland.shortTitleActive = false
-		return baseWidth
+		return baseWidth + timerAdd
 	}
 
 	// Visualizer data properties - connected to global state
@@ -487,7 +518,7 @@ Item {
 	implicitWidth: targetWidth
 	Layout.preferredWidth: targetWidth
 	Layout.minimumWidth: minWidth
-	Layout.maximumWidth: maxWidth
+	Layout.maximumWidth: effectiveMaxWidth
 	width: targetWidth
 	height: 32
 	clip: true // keep children inside the island bounds
@@ -632,7 +663,74 @@ Item {
 		// Keep row present so clipboard indicator/icon remains while previewing
 		visible: true
 
-		// Clipboard indicator slot on the left
+		// Timer indicator slot on the far left (compact like clipboard/music)
+		Item {
+			id: timerIndicatorSlot
+			visible: dynamicIsland.timerActive
+			Layout.fillHeight: true
+			implicitWidth: contentRow.implicitWidth
+			RowLayout {
+				id: contentRow
+				anchors.verticalCenter: parent.verticalCenter
+				spacing: 6
+				// Pomodoro group: circular progress + time
+				RowLayout {
+					visible: TimerService.pomodoroRunning
+					spacing: 4
+					Layout.alignment: Qt.AlignVCenter
+					ClippedFilledCircularProgress {
+						id: pomoCirc
+						Layout.alignment: Qt.AlignVCenter
+						implicitSize: 20
+						lineWidth: Appearance.rounding.unsharpen
+						value: TimerService.pomodoroLapDuration > 0 ? (TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration) : 0
+						colPrimary: Appearance.colors.colOnSecondaryContainer
+						accountForLightBleeding: true
+						Item {
+							anchors.centerIn: parent
+							width: pomoCirc.implicitSize
+							height: pomoCirc.implicitSize
+							MaterialSymbol {
+								anchors.centerIn: parent
+								font.weight: Font.DemiBold
+								fill: 1
+								text: "timer"
+								iconSize: Appearance.font.pixelSize.normal
+								color: Appearance.m3colors.m3onSecondaryContainer
+							}
+						}
+					}
+					StyledText {
+						Layout.alignment: Qt.AlignVCenter
+						text: dynamicIsland.formatSeconds(TimerService.pomodoroSecondsLeft)
+						font.pixelSize: Appearance.font.pixelSize.small
+						font.family: Appearance.fontFamily
+						color: Appearance.colors.colOnLayer1
+					}
+				}
+				// Stopwatch group: icon + time
+				RowLayout {
+					visible: TimerService.stopwatchRunning
+					spacing: 4
+					Layout.alignment: Qt.AlignVCenter
+					MaterialSymbol {
+						Layout.alignment: Qt.AlignVCenter
+						text: "timer"
+						iconSize: Appearance.font.pixelSize.normal - 2
+						color: Appearance.m3colors.m3onSecondaryContainer
+					}
+					StyledText {
+						Layout.alignment: Qt.AlignVCenter
+						text: dynamicIsland.formatSeconds(Math.floor(TimerService.stopwatchTime * 0.01))
+						font.pixelSize: Appearance.font.pixelSize.small
+						font.family: Appearance.fontFamily
+						color: Appearance.colors.colOnLayer1
+					}
+				}
+			}
+		}
+
+		// Clipboard indicator slot (left of media text)
 		Item {
 			id: clipboardIndicatorSlot
 			visible: ClipboardService.hasItem
@@ -792,8 +890,10 @@ Item {
 			function onLyricsModeActiveChanged() {
 				if (GlobalStates.lyricsModeActive) {
 					LyricsService.maybeFetch()
-					Qt.callLater(function(){ dynamicIsland.updateWidth() })
 				}
+				// Recalc on both enabling and disabling lyrics mode
+				Qt.callLater(function(){ dynamicIsland.scheduleWidthRecalc() })
+			
 		}
 	}
 
@@ -868,23 +968,31 @@ Item {
 
 					
 					property bool titleHovered: false
-					// Reactive: true only if, with current container width (which expands on hover), text still overflows
+					// Reactive (live) truncation against current width
 					property bool titleTruncated: mediaTitle.implicitWidth > titleScrollContainer.width
-					property bool shouldAnimateTitle: titleHovered && (mediaTitle.implicitWidth > titleScrollContainer.width)
+					// Latched truncation state captured at hover start to prevent oscillation
+					property bool titleTruncatedLatched: false
+					property int titleWidthBeforeHover: 0
+					property bool shouldAnimateTitle: titleHovered && (titleTruncatedLatched || (mediaTitle.implicitWidth > titleScrollContainer.width))
 					
 					// Recalculate island width when hover/truncation state changes
 					onTitleHoveredChanged: {
-						if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
-						if (!titleHovered) {
-							// Reset scroll position when hover ends
+						if (titleHovered) {
+							// Capture baseline width and latch truncation state to avoid hover oscillation
+							titleWidthBeforeHover = titleScrollContainer.width
+							titleTruncatedLatched = (mediaTitle.implicitWidth > titleWidthBeforeHover)
+							if (titleContainer.titleTruncatedLatched) {
+								marqueeAnim.restart()
+							}
+						} else {
+							// Reset scroll position and latch when hover ends
 							mediaTitle.x = 0
-						} else if (titleContainer.titleTruncated) {
-							// Start marquee immediately on hover if truncated
-							marqueeAnim.restart()
+							titleTruncatedLatched = false
 						}
+						if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
 					}
 					onTitleTruncatedChanged: {
-						if (titleContainer.titleTruncated && titleContainer.titleHovered) {
+						if (titleContainer.titleHovered && titleContainer.titleTruncatedLatched) {
 							marqueeAnim.restart()
 						} else if (!titleContainer.titleTruncated) {
 							mediaTitle.x = 0
@@ -922,7 +1030,7 @@ Item {
 						Item {
 							id: lyricsView
 							anchors.fill: parent
-							visible: GlobalStates.lyricsModeActive && !dynamicIsland.timerActive
+							visible: GlobalStates.lyricsModeActive
 							opacity: visible ? 1 : 0
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 							property string currentText: (GlobalStates.lyricsModeActive ? (LyricsService.available ? (LyricsService.currentText || "") : Translation.tr("Fetching lyrics...")) : "")
@@ -953,13 +1061,13 @@ Item {
                                     if (lyricNew.item) lyricNew.item.currentMs = karaokeMs
                                 }
                             }
-                            onVisibleChanged: {
+							onVisibleChanged: {
                                 console.log("DynamicIsland: lyricsView visible=", visible, "lyricsMode=", GlobalStates.lyricsModeActive, "timerActive=", dynamicIsland.timerActive)
                                 if (visible) {
                                     // Ensure no residual scroll offset from title mode
                                     titleScrollContainer.contentX = 0
                                     titleScrollContainer.contentY = 0
-                                    if (dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+									if (dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.scheduleWidthRecalc)
                                 }
                             }
 
@@ -983,7 +1091,7 @@ Item {
                                     z: 1
                                     width: lyricStack.width
                                     sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
-                                    onLoaded: {
+									onLoaded: {
                                         console.log("DynamicIsland: lyricOld loaded comp=", (LyricsService.karaoke ? "karaoke" : "text"), "karaoke=", LyricsService.karaoke)
                                         // Enforce correct component (avoid flicker by only changing when needed)
                                         const targetOld = LyricsService.karaoke ? karaokeComp : textComp
@@ -1041,7 +1149,7 @@ Item {
                                         console.log("DynamicIsland: lyricOld onLoaded prevText.len=", (lyricsView.prevText||"").length,
                                                     "segments.len=", (LyricsService.karaoke ? (item.segments||[]).length : 0),
                                                     "currentMs=", (LyricsService.karaoke ? item.currentMs : -1))
-                                        if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+										if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.scheduleWidthRecalc)
                                     }
                                 }
                                 Loader {
@@ -1056,7 +1164,7 @@ Item {
                                     z: 2
                                     width: lyricStack.width
                                     sourceComponent: LyricsService.karaoke ? karaokeComp : textComp
-                                    onLoaded: {
+									onLoaded: {
                                         console.log("DynamicIsland: lyricNew loaded comp=", (LyricsService.karaoke ? "karaoke" : "text"), "karaoke=", LyricsService.karaoke)
                                         // Enforce correct component (avoid flicker by only changing when needed)
                                         const targetNew = LyricsService.karaoke ? karaokeComp : textComp
@@ -1104,7 +1212,7 @@ Item {
                                                     "segments.len=", (LyricsService.karaoke ? (item.segments||[]).length : 0),
                                                     "currentMs=", (LyricsService.karaoke ? item.currentMs : -1),
                                                     "currentIndex=", LyricsService.currentIndex)
-                                        if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.updateWidth)
+										if (visible && GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) Qt.callLater(dynamicIsland.scheduleWidthRecalc)
                                     }
                                 }
 
@@ -1223,7 +1331,7 @@ Item {
                                 }
                             }
 
-                            onCurrentTextChanged: {
+							onCurrentTextChanged: {
                                 console.log("DynamicIsland: onCurrentTextChanged karaoke=", LyricsService.karaoke, "idx=", LyricsService.currentIndex,
                                             "curr.len=", (lyricsView.currentText||"").length, "prev.len=", (lyricsView.prevText||"").length)
                                 // Prepare animation: move new from top (hidden), push old down
@@ -1242,7 +1350,7 @@ Item {
                                     lyricNew.visible = true
                                     lyricNew.opacity = 0
                                     animGrp.start()
-                                    if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+									if (GlobalStates.lyricsModeActive && dynamicIsland.mediaActive) dynamicIsland.scheduleWidthRecalc()
                                 })
                             }
 
@@ -1280,7 +1388,7 @@ Item {
 						Item {
 							id: titleView
 							anchors.fill: parent
-							visible: !GlobalStates.lyricsModeActive && !dynamicIsland.timerActive
+							visible: !GlobalStates.lyricsModeActive
 							opacity: visible ? 1 : 0
 							Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
 							StyledText {
@@ -1312,85 +1420,24 @@ Item {
 									PauseAnimation { duration: 800 }
 									NumberAnimation { target: titleScrollContainer; property: "contentX"; to: 0; duration: Math.max(1200, 30 * mediaTitle.overflow); easing.type: Easing.InOutQuad }
 								}
-								onTextChanged: { if (dynamicIsland.mediaActive) dynamicIsland.updateWidth() }
+								onTextChanged: { if (dynamicIsland.mediaActive) dynamicIsland.scheduleWidthRecalc() }
 								onImplicitWidthChanged: {
-									if (dynamicIsland.mediaActive) dynamicIsland.updateWidth()
+									if (dynamicIsland.mediaActive) dynamicIsland.scheduleWidthRecalc()
 									if (titleContainer.titleHovered && titleContainer.titleTruncated) marqueeAnim.restart()
 								}
 							}
 						}
 					}
 
-					// Timer info
-					Row {
-						id: timerInfo
-						anchors.centerIn: parent
-						spacing: TimerService.pomodoroRunning && TimerService.stopwatchRunning ? 12 : 4
-						opacity: dynamicIsland.timerActive ? 1 : 0
-						visible: opacity > 0
-						Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
-
-						// Pomodoro with Resource.qml style
-						Item {
-							visible: TimerService.pomodoroRunning
-							width: 26
-							height: 26
-							anchors.verticalCenter: parent.verticalCenter
-
-							CircularProgress {
-								anchors.centerIn: parent
-								implicitSize: 26
-								lineWidth: 2
-								value: {
-                return TimerService.pomodoroSecondsLeft / TimerService.pomodoroLapDuration;
-            }
-								colSecondary: Appearance.colors.colSecondaryContainer
-								colPrimary: Appearance.m3colors.m3onSecondaryContainer
-								enableAnimation: true
-								
-								MaterialSymbol {
-									anchors.centerIn: parent
-									fill: 1
-									text: "timer"
-									iconSize: Appearance.font.pixelSize.normal
-									color: Appearance.m3colors.m3onSecondaryContainer
-								}
-							}
-						}
-
-						StyledText {
-							visible: TimerService.pomodoroRunning
-							anchors.verticalCenter: parent.verticalCenter
-							text: formatSeconds(TimerService.pomodoroSecondsLeft)
-							font.pixelSize: Appearance.font.pixelSize.normal
-							color: Appearance.colors.colOnLayer1
-						}
-
-						// Stopwatch with minimal style
-						MaterialSymbol {
-							visible: TimerService.stopwatchRunning
-							anchors.verticalCenter: parent.verticalCenter
-							text: "timer"
-							iconSize: Appearance.font.pixelSize.normal
-							color: Appearance.m3colors.m3onSecondaryContainer
-						}
-
-						StyledText {
-							visible: TimerService.stopwatchRunning
-							anchors.verticalCenter: parent.verticalCenter
-							text: formatSeconds(Math.floor(TimerService.stopwatchTime * 0.01))
-							font.pixelSize: Appearance.font.pixelSize.normal
-							color: Appearance.colors.colOnLayer1
-						}
-					}
+					// Timer info removed from center; now shown as a left-side indicator
 				}
 
 				// Progress bar
 				Item {
 					Layout.fillWidth: true
-					Layout.minimumWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 60 : 80
-					Layout.preferredWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 80 : 120
-					Layout.maximumWidth: (titleContainer.titleHovered && titleContainer.titleTruncated) ? 100 : 160
+					Layout.minimumWidth: (titleContainer.titleHovered && (titleContainer.titleTruncatedLatched || titleContainer.titleTruncated)) ? 60 : 80
+					Layout.preferredWidth: (titleContainer.titleHovered && (titleContainer.titleTruncatedLatched || titleContainer.titleTruncated)) ? 80 : 120
+					Layout.maximumWidth: (titleContainer.titleHovered && (titleContainer.titleTruncatedLatched || titleContainer.titleTruncated)) ? 100 : 160
 					Layout.preferredHeight: 8
 					// Keep progress bar visually below the title
 					z: 0
@@ -1531,7 +1578,7 @@ Item {
 			height: parent.height
 			x: Math.round((parent.width - width) / 2)
 			clip: true
-			onVisibleChanged: if (visible) dynamicIsland.updateWidth()
+			onVisibleChanged: if (visible) dynamicIsland.scheduleWidthRecalc()
 
 
 			// When derived window state changes, recalc width
@@ -1587,17 +1634,18 @@ Item {
 						verticalAlignment: Text.AlignVCenter
 						clip: true
 						function fitToAvailable() {
-							// One-shot font fit: reset to baseline, then shrink if needed to fit available width.
+							// Only shrink font when the island is at its maximum width and text still overflows.
 							Qt.callLater(function() {
-								var baseline = Appearance.font.pixelSize.small
-								var minSize = 8
+								const baseline = Appearance.font.pixelSize.small
+								const minSize = 8
 								// reset to baseline to measure true width
 								activeWindowTitle.font.pixelSize = baseline
-								var available = titleContentBox.width
-								var iw = activeWindowTitle.implicitWidth
-								if (iw > 0 && available > 0 && iw > available) {
-									var scale = available / iw
-									var newSize = Math.max(minSize, Math.floor(baseline * scale))
+								const atMax = Math.abs(dynamicIsland.width - dynamicIsland.effectiveMaxWidth) < 1
+								const available = titleContentBox.width
+								const iw = activeWindowTitle.implicitWidth
+								if (atMax && iw > 0 && available > 0 && iw > available) {
+									const scale = available / iw
+									const newSize = Math.max(minSize, Math.floor(baseline * scale))
 									activeWindowTitle.font.pixelSize = newSize
 								} else {
 									activeWindowTitle.font.pixelSize = baseline
