@@ -22,6 +22,21 @@ Item {
     property bool monochrome: true
     // IconImage exposes 'status' like Image; use it to detect availability
     readonly property bool available: svgImage.status === Image.Ready
+    // Debug toggle (opt-in per instance)
+    property bool debug: false
+
+    // Build a robust file URL for the SVG so loading works regardless of path format
+    function buildSource() {
+        const base = Quickshell.shellPath("assets/icons8/plumpy");
+        const p = `${base}/${root.name}.svg`;
+        if (p.startsWith("file:"))
+            return p;
+
+        if (p.startsWith("/"))
+            return `file://${p}`;
+
+        return Qt.resolvedUrl(p);
+    }
 
     width: iconSize
     height: iconSize
@@ -31,8 +46,13 @@ Item {
         id: svgImage
 
         anchors.fill: parent
-        source: Qt.resolvedUrl(Quickshell.shellPath(`assets/icons8/plumpy/${root.name}.svg`))
+        source: (root.name && root.name.length > 0) ? root.buildSource() : ""
         opacity: root.monochrome ? 0 : 1
+        onStatusChanged: {
+            if (root.debug)
+                console.log(`[PlumpyIcon] name=`, root.name, ' source=', source, ' status=', status, ' ready=', (status === Image.Ready));
+
+        }
     }
 
     // Monochrome silhouette mode (default): paint a solid rectangle, mask with SVG alpha

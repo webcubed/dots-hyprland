@@ -14,6 +14,8 @@ TabButton {
     property bool selected: false
     property int tabContentWidth: contentItem.children[0].implicitWidth
     property int rippleDuration: 1200
+    // Control whether to prefer Plumpy icons in this context
+    property bool usePlumpyIcons: false
     height: buttonBackground.height
     implicitWidth: Math.max(tabContentWidth, buttonBackground.implicitWidth, minimumWidth)
 
@@ -141,8 +143,8 @@ TabButton {
     
     contentItem: Item {
         anchors.centerIn: buttonBackground
-        // Prefer Plumpy when enabled and an asset exists; fallback to MaterialSymbol
-    readonly property bool usePlumpy: true
+        // Prefer Plumpy when enabled by the parent and an asset exists; fallback to MaterialSymbol
+    readonly property bool usePlumpy: button.usePlumpyIcons
         function plumpyFromTabIcon(name) {
             // Cheatsheet tabs and common cases
             if (name === 'experiment') return 'chemistry'

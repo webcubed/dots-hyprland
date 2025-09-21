@@ -51,6 +51,15 @@ Rectangle {
 
             tabButtonList: root.tabButtonList
             externalTrackedTab: root.selectedTab
+            // Use Plumpy icons for these tabs (Notifications and Audio)
+            Component.onCompleted: {
+                // Walk children to set property on buttons once created
+                // Repeater children are under TabBar.contentItem.children[0].children
+                const host = tabBar.contentItem?.children?.[0]
+                if (host && host.children) {
+                    host.children.forEach((btn) => { try { btn.usePlumpyIcons = true } catch(e) {} })
+                }
+            }
         }
 
         SwipeView {

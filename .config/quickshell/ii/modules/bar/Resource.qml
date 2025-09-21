@@ -44,18 +44,37 @@ Item {
             Item {
                 // Prefer Plumpy icons when available; fallback to Material symbols
                 function plumpyFromMaterial(name) {
-                    // CPU icon in this context
-                    // No good Plumpy match for swap_horiz; keep Material
-
-                    switch (name) {
-                    case 'memory':
+                    // Normalize CPU vs Memory to explicit Plumpy assets
+                    const key = (name || '').trim();
+                    switch (key) {
                     case 'planner_review':
                         return 'cpu';
+                    case 'swap_horiz':
+                        return 'speed-circle';
+                    case 'memory':
                     case 'memory_alt':
                         return 'memory-slot';
                     default:
                         return '';
                     }
+                }
+
+                function resolvedPlumpyName() {
+                    const mapped = (plumpyFromMaterial(root.iconName) || '').trim();
+                    if (mapped.length > 0)
+                        return mapped;
+
+                    const raw = (root.iconName || '').toLowerCase();
+                    if (raw.includes('memory'))
+                        return 'memory-slot';
+
+                    if (raw.includes('planner'))
+                        return 'cpu';
+
+                    if (raw.includes('swap'))
+                        return 'speed-circle';
+
+                    return '';
                 }
 
                 anchors.centerIn: parent
@@ -68,13 +87,16 @@ Item {
                     anchors.centerIn: parent
                     visible: name !== ''
                     iconSize: Appearance.font.pixelSize.normal
-                    name: plumpyFromMaterial(root.iconName)
-                    primaryColor: Appearance.m3colors.m3onSecondaryContainer
+                    name: resolvedPlumpyName()
+                    monochrome: false
+                    primaryColor: Appearance.colors.colOnSecondaryContainer
+                    debug: true
                 }
 
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    visible: !resPlumpy.visible || !resPlumpy.available
+                    // Fallback to Material only if no Plumpy name or icon unavailable
+                    visible: resPlumpy.name === '' || !resPlumpy.available
                     font.weight: Font.DemiBold
                     fill: 1
                     text: root.iconName

@@ -16,21 +16,43 @@ Item {
     implicitWidth: Appearance.sizes.verticalBarWidth
 
     ClippedFilledCircularProgress {
+        // CPU icon in this context or memory based on placement
+
         id: resourceProgress
 
         // Prefer Plumpy icons when available; fallback to Material symbols
         function plumpyFromMaterial(name) {
-            // CPU icon in this context or memory based on placement
-
-            switch (name) {
-            case 'memory':
+            // Normalize CPU vs Memory to explicit Plumpy assets
+            const key = (name || '').trim();
+            switch (key) {
             case 'planner_review':
                 return 'cpu';
+            case 'swap_horiz':
+                return 'speed-circle';
+            case 'memory':
             case 'memory_alt':
                 return 'memory-slot';
             default:
                 return '';
             }
+        }
+
+        function resolvedPlumpyName() {
+            const mapped = (plumpyFromMaterial(root.iconName) || '').trim();
+            if (mapped.length > 0)
+                return mapped;
+
+            const raw = (root.iconName || '').toLowerCase();
+            if (raw.includes('memory'))
+                return 'memory-slot';
+
+            if (raw.includes('planner'))
+                return 'cpu';
+
+            if (raw.includes('swap'))
+                return 'speed-circle';
+
+            return '';
         }
 
         anchors.centerIn: parent
@@ -45,13 +67,18 @@ Item {
             anchors.centerIn: parent
             visible: name !== ''
             iconSize: 13
-            name: plumpyFromMaterial(root.iconName)
+            name: resolvedPlumpyName()
+            monochrome: false
             primaryColor: Appearance.colors.colOnSecondaryContainer
+            Component.onCompleted: {
+                console.log(`[Resource-Vert] iconName=`, root.iconName, ' -> plumpy=', name);
+            }
         }
 
         MaterialSymbol {
             anchors.centerIn: parent
-            visible: !vResPlumpy.visible || !vResPlumpy.available
+            // Fallback to Material only if no Plumpy name or icon unavailable
+            visible: vResPlumpy.name === '' || !vResPlumpy.available
             font.weight: Font.Medium
             fill: 1
             text: root.iconName

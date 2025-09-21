@@ -35,6 +35,7 @@ RippleButton {
         case 'terminal': return 'terminal';
         case 'settings_suggest': return 'tune';
         case 'video_settings': return 'tune';
+    case 'travel_explore': return 'searchbar';
         case 'menu_book': return 'translation';
         case 'check': return 'check';
         case 'content_copy': return 'clipboard-approve';

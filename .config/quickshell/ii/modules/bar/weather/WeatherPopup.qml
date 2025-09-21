@@ -29,8 +29,6 @@ StyledPopup {
                 spacing: 6
 
                 Item {
-                    readonly property bool usePlumpy: true
-
                     implicitWidth: Appearance.font.pixelSize.large
                     implicitHeight: Appearance.font.pixelSize.large
 
@@ -38,7 +36,7 @@ StyledPopup {
                         id: locPlumpy
 
                         anchors.centerIn: parent
-                        visible: parent.usePlumpy
+                        visible: name !== ''
                         iconSize: parent.implicitWidth
                         name: 'location'
                         primaryColor: Appearance.colors.colOnSurfaceVariant
@@ -46,7 +44,7 @@ StyledPopup {
 
                     MaterialSymbol {
                         anchors.centerIn: parent
-                        visible: !parent.usePlumpy || !locPlumpy.available
+                        visible: locPlumpy.name === ''
                         fill: 0
                         font.weight: Font.Medium
                         text: "location_on"

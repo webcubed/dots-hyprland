@@ -46,6 +46,7 @@ ColumnLayout {
                 buttonText: modelData.name
                 buttonIcon: modelData.icon
                 minimumWidth: 160
+                // By default, PrimaryTabBar keeps Material icons; callers can set this property after creation if needed.
             }
         }
     }

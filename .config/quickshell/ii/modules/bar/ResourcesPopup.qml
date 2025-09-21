@@ -14,6 +14,28 @@ StyledPopup {
         return (kb / (1024 * 1024)).toFixed(1) + " GB";
     }
 
+    // Hoisted icon mapping helpers (stable scope)
+    function plumpyFromSymbol(name) {
+        switch (name) {
+        case 'bolt':
+            return 'bolt';
+        case 'device_thermostat':
+            return 'thermometer';
+        case 'air':
+            return 'wind';
+        case 'check_circle':
+            return 'check';
+        case 'clock_loader_60':
+            return 'piechart';
+        case 'memory':
+            return 'cpu';
+        case 'memory_alt':
+            return 'memory-slot';
+        default:
+            return '';
+        }
+    }
+
     RowLayout {
         anchors.centerIn: parent
         spacing: 12
@@ -125,24 +147,9 @@ StyledPopup {
         Layout.fillWidth: true
 
         Item {
-            readonly property bool usePlumpy: true
+            // use root.plumpyFromSymbol
 
-            function plumpyFromSymbol(name) {
-                switch (name) {
-                case 'bolt':
-                    return 'bolt';
-                case 'device_thermostat':
-                    return 'thermometer';
-                case 'air':
-                    return 'wind';
-                case 'check_circle':
-                    return 'check';
-                case 'clock_loader_60':
-                    return 'piechart';
-                default:
-                    return '';
-                }
-            }
+            readonly property bool usePlumpy: true
 
             implicitWidth: Appearance.font.pixelSize.large
             implicitHeight: Appearance.font.pixelSize.large
@@ -153,13 +160,14 @@ StyledPopup {
                 anchors.centerIn: parent
                 visible: parent.usePlumpy && name !== ''
                 iconSize: parent.implicitWidth
-                name: plumpyFromSymbol(resourceItem.icon)
+                name: root.plumpyFromSymbol(resourceItem.icon)
                 primaryColor: Appearance.colors.colOnSurfaceVariant
             }
 
             MaterialSymbol {
                 anchors.centerIn: parent
-                visible: !parent.usePlumpy || !resItemPlumpy.available || resItemPlumpy.name === ''
+                // Fallback to Material only if no Plumpy name is defined
+                visible: resItemPlumpy.name === ''
                 text: resourceItem.icon
                 color: Appearance.colors.colOnSurfaceVariant
                 iconSize: parent.implicitWidth
@@ -191,18 +199,9 @@ StyledPopup {
         spacing: 5
 
         Item {
-            readonly property bool usePlumpy: true
+            // use root.plumpyFromSymbol
 
-            function plumpyFromSymbol(name) {
-                switch (name) {
-                case 'memory':
-                    return 'cpu';
-                case 'memory_alt':
-                    return 'memory-slot';
-                default:
-                    return '';
-                }
-            }
+            readonly property bool usePlumpy: true
 
             implicitWidth: Appearance.font.pixelSize.large
             implicitHeight: Appearance.font.pixelSize.large
@@ -213,13 +212,14 @@ StyledPopup {
                 anchors.centerIn: parent
                 visible: parent.usePlumpy && name !== ''
                 iconSize: parent.implicitWidth
-                name: plumpyFromSymbol(headerItem.icon)
+                name: root.plumpyFromSymbol(headerItem.icon)
                 primaryColor: Appearance.colors.colOnSurfaceVariant
             }
 
             MaterialSymbol {
                 anchors.centerIn: parent
-                visible: !parent.usePlumpy || !resHdrPlumpy.available || resHdrPlumpy.name === ''
+                // Fallback to Material only if no Plumpy name is defined
+                visible: resHdrPlumpy.name === ''
                 fill: 0
                 font.weight: Font.Medium
                 text: headerItem.icon

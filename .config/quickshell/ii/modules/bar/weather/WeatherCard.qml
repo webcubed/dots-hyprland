@@ -10,6 +10,30 @@ Rectangle {
     property alias value: value.text
     property alias symbol: symbol.text
 
+    // Map common weather metric symbols to Plumpy asset names
+    function plumpyFromSymbol(sym) {
+        switch (sym) {
+        case 'wb_sunny':
+            return 'sun';
+        case 'air':
+            return 'wind';
+        case 'rainy_light':
+            return 'rain';
+        case 'humidity_low':
+            return 'thermometer'; // approximate humidity
+        case 'visibility':
+            return 'visibility';
+        case 'readiness_score':
+            return 'piechart'; // approximate pressure gauge
+        case 'wb_twilight':
+            return 'sunrise';
+        case 'bedtime':
+            return 'moon';
+        default:
+            return '';
+        }
+    }
+
     radius: Appearance.rounding.small
     color: Appearance.colors.colSurfaceContainerHigh
     implicitWidth: columnLayout.implicitWidth + 14 * 2
@@ -26,30 +50,6 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
 
             Item {
-                readonly property bool usePlumpy: true
-
-                // Map common weather metric symbols to plumpy
-                function plumpyFromSymbol(sym) {
-                    switch (sym) {
-                    case 'wb_sunny':
-                        return 'sun';
-                    case 'air':
-                        return 'wind';
-                    case 'rainy_light':
-                        return 'rain';
-                    case 'humidity_low':
-                        return 'thermometer'; // approximate
-                    case 'visibility':
-                        return 'visibility';
-                    case 'wb_twilight':
-                        return 'sunrise';
-                    case 'bedtime':
-                        return 'moon';
-                    default:
-                        return '';
-                    }
-                }
-
                 implicitWidth: Appearance.font.pixelSize.normal
                 implicitHeight: Appearance.font.pixelSize.normal
 
@@ -57,9 +57,9 @@ Rectangle {
                     id: cardPlumpy
 
                     anchors.centerIn: parent
-                    visible: parent.usePlumpy && name !== ''
+                    visible: name !== ''
                     iconSize: parent.implicitWidth
-                    name: plumpyFromSymbol(root.symbol)
+                    name: root.plumpyFromSymbol(root.symbol)
                     primaryColor: Appearance.colors.colOnSurfaceVariant
                 }
 
@@ -67,7 +67,7 @@ Rectangle {
                     id: symbol
 
                     anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !cardPlumpy.available
+                    visible: cardPlumpy.name === ''
                     fill: 0
                     iconSize: parent.implicitWidth
                     color: Appearance.colors.colOnSurfaceVariant

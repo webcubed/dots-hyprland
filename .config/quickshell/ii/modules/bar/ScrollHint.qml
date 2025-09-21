@@ -12,6 +12,18 @@ Revealer {
     property string side: "left"
     property string tooltipText: ""
 
+    // Helper hoisted to root scope
+    function plumpyFromIcon(name) {
+        switch (name) {
+        case 'light_mode':
+            return 'sun';
+        case 'volume_up':
+            return '';
+        default:
+            return '';
+        }
+    }
+
     MouseArea {
         // StyledToolTip {
         //     extraVisibleCondition: tooltipText.length > 0
@@ -63,18 +75,6 @@ Revealer {
 
             Item {
                 readonly property bool usePlumpy: true
-
-                function plumpyFromIcon(name) {
-                    switch (name) {
-                    case 'light_mode':
-                        return 'sun';
-                    case 'volume_up':
-                        // Unknowns: return empty to use Material fallback
-                        return '';
-                    default:
-                        return '';
-                    }
-                }
 
                 implicitWidth: 14
                 implicitHeight: 14

@@ -31,7 +31,7 @@ QuickToggleButton {
             iconSize: 20
             name: "coffee"
             // Use themed neutral when off, on-primary when toggled
-            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.colors.colOnLayer2
+            primaryColor: toggled ? Appearance.m3colors.m3onPrimary : Appearance.m3colors.colOnLayer2
         }
 
         MaterialSymbol {

@@ -115,16 +115,15 @@ StyledPopup {
                 Item {
                     implicitWidth: Appearance.font.pixelSize.large
                     implicitHeight: Appearance.font.pixelSize.large
-                    readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
                     PlumpyIcon {
                         id: mediaNotePlumpy
                         anchors.centerIn: parent
-                        visible: parent.usePlumpy
+                        visible: true
                         iconSize: parent.implicitWidth
                         name: 'icons8-music-note'
                         primaryColor: Appearance.colors.colOnSurfaceVariant
                     }
-                    MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaNotePlumpy.available; text: "music_note"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant }
+                    MaterialSymbol { anchors.centerIn: parent; visible: mediaNotePlumpy.name === ''; text: "music_note"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant }
                 }
                 StyledText {
                     text: title || Translation.tr("Unknown Title")
@@ -140,43 +139,19 @@ StyledPopup {
                     spacing: 4
                     RowLayout {
                         spacing: 6
-                        Item {
-                            implicitWidth: Appearance.font.pixelSize.normal
-                            implicitHeight: Appearance.font.pixelSize.normal
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
-                            PlumpyIcon { id: mediaArtistPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'user'; primaryColor: Appearance.colors.colOnSurfaceVariant }
-                            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaArtistPlumpy.available; text: "person"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant }
-                        }
+                        Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaArtistPlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'user'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaArtistPlumpy.name === ''; text: "person"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
                         StyledText { text: artist || Translation.tr("Unknown Artist"); color: Appearance.colors.colOnSurfaceVariant }
                     }
-                    RowLayout {
-                        spacing: 6
-                        Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: mediaAlbumPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'album'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaAlbumPlumpy.available; text: "album"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
-                        StyledText { text: album || Translation.tr("Unknown Album"); color: Appearance.colors.colOnSurfaceVariant }
-                    }
+                    RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaAlbumPlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'album'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaAlbumPlumpy.name === ''; text: "album"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: album || Translation.tr("Unknown Album"); color: Appearance.colors.colOnSurfaceVariant } }
                 }
                 // Right column
                 ColumnLayout {
                     spacing: 4
-                    RowLayout {
-                        spacing: 6
-                        Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: mediaSpeedPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'speed-science'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaSpeedPlumpy.available; text: "speed"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
-                        StyledText { text: (BpmKey.bpm > 0 ? (BpmKey.bpm + " BPM") : "—"); color: Appearance.colors.colOnSurfaceVariant }
-                    }
-                    RowLayout {
-                        spacing: 6
-                        Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: mediaTunePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'tune'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaTunePlumpy.available; text: "tune"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
-                        StyledText { text: (BpmKey.key && BpmKey.key.length > 0 ? BpmKey.key : "—"); color: Appearance.colors.colOnSurfaceVariant }
-                    }
+                    RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaSpeedPlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'speed-science'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaSpeedPlumpy.name === ''; text: "speed"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: (BpmKey.bpm > 0 ? (BpmKey.bpm + " BPM") : "—"); color: Appearance.colors.colOnSurfaceVariant } }
+                    RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaTunePlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'tune'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaTunePlumpy.name === ''; text: "tune"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: (BpmKey.key && BpmKey.key.length > 0 ? BpmKey.key : "—"); color: Appearance.colors.colOnSurfaceVariant } }
                 }
             }
-            RowLayout {
-                spacing: 6
-                Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: mediaSchedulePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'clock'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !mediaSchedulePlumpy.available; text: "schedule"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
-                StyledText { text: `${formatTime(positionMs)} / ${formatTime(lengthMs)}`; color: Appearance.colors.colOnSurfaceVariant }
-                Item { Layout.fillWidth: true }
-                StyledText { text: pct(positionMs, lengthMs); color: Appearance.colors.colOnSurfaceVariant }
-            }
+            RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaSchedulePlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'clock'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaSchedulePlumpy.name === ''; text: "schedule"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: `${formatTime(positionMs)} / ${formatTime(lengthMs)}`; color: Appearance.colors.colOnSurfaceVariant } Item { Layout.fillWidth: true } StyledText { text: pct(positionMs, lengthMs); color: Appearance.colors.colOnSurfaceVariant } }
             // Simple progress bar
             Rectangle {
                 Layout.fillWidth: true
