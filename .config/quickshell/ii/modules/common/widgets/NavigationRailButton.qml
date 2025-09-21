@@ -19,6 +19,20 @@ TabButton {
     property real baseHighlightHeight: 32
     property real highlightCollapsedTopMargin: 8
 
+    // Map Material icons to Plumpy in root scope so children can call root.plumpyFromMaterial
+    function plumpyFromMaterial(name) {
+        switch (name) {
+        case 'calendar_month':
+            return 'calendar';
+        case 'done_outline':
+            return 'check';
+        case 'schedule':
+            return 'clock';
+        default:
+            return '';
+        }
+    }
+
     padding: 0
     // The navigation item’s target area always spans the full width of the
     // nav rail, even if the item container hugs its contents.
@@ -100,19 +114,6 @@ TabButton {
 
             readonly property bool usePlumpy: true
 
-            function plumpyFromMaterial(name) {
-                switch (name) {
-                case 'calendar_month':
-                    return 'calendar';
-                case 'done_outline':
-                    return 'check';
-                case 'schedule':
-                    return 'clock';
-                default:
-                    return '';
-                }
-            }
-
             implicitWidth: root.baseSize
             implicitHeight: root.baseHighlightHeight
 
@@ -128,7 +129,7 @@ TabButton {
                 anchors.centerIn: parent
                 visible: itemIconBackground.usePlumpy && name !== ''
                 iconSize: 24
-                name: itemIconBackground.plumpyFromMaterial(root.buttonIcon)
+                name: root.plumpyFromMaterial(root.buttonIcon)
                 primaryColor: toggled ? Appearance.m3colors.m3onSecondaryContainer : Appearance.colors.colOnLayer1
             }
 
@@ -137,8 +138,8 @@ TabButton {
 
                 rotation: root.buttonIconRotation
                 anchors.centerIn: parent
-                // Fallback to Material only if we don't have a Plumpy mapping
-                visible: navRailPlumpy.name === ''
+                // Fallback to Material only if we don't have a Plumpy mapping or asset unavailable
+                visible: navRailPlumpy.name === '' || !navRailPlumpy.available
                 iconSize: 24
                 fill: toggled ? 1 : 0
                 font.weight: (toggled || root.hovered) ? Font.DemiBold : Font.Normal

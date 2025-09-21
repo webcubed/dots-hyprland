@@ -82,11 +82,12 @@ Item {
                     anchors.centerIn: parent
                     spacing: 5
 
-                    MaterialSymbol {
+                    Item {
                         Layout.alignment: Qt.AlignHCenter
-                        iconSize: 55
-                        color: Appearance.m3colors.m3outline
-                        text: "brand_awareness"
+                        implicitWidth: 55
+                        implicitHeight: 55
+                        PlumpyIcon { id: audioEmptyPlumpy; anchors.centerIn: parent; iconSize: parent.implicitWidth; name: 'volume'; primaryColor: Appearance.m3colors.m3outline }
+                        MaterialSymbol { anchors.centerIn: parent; visible: !audioEmptyPlumpy.available; iconSize: parent.implicitWidth; color: Appearance.m3colors.m3outline; text: "brand_awareness" }
                     }
                     StyledText {
                         Layout.alignment: Qt.AlignHCenter

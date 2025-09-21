@@ -7,7 +7,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 TabButton {
-    id: button
+    id: root
     property string buttonText
     property string buttonIcon
     property real minimumWidth: 110
@@ -31,6 +31,17 @@ TabButton {
         easing.bezierCurve: Appearance?.animationCurves.standardDecel
     }
 
+    // Global mapping function: map Material tab icons to Plumpy names
+    function plumpyFromTabIcon(name) {
+        const n = name || ''
+        if (n === 'experiment') return 'chemistry'
+        if (n === 'keyboard') return 'keyboard'
+        // Right sidebar tabs
+        if (n === 'notifications') return 'bell'
+        if (n === 'volume_up') return 'volume'
+        return ''
+    }
+
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
@@ -48,7 +59,7 @@ TabButton {
             rippleAnim.restart();
         }
         onReleased: (event) => {
-            button.click() // Because the MouseArea already consumed the event
+            root.click() // Because the MouseArea already consumed the event
             rippleFadeAnim.restart();
         }
     }
@@ -97,7 +108,7 @@ TabButton {
         id: buttonBackground
         radius: Appearance?.rounding.small
         implicitHeight: 50
-        color: (button.hovered ? button.colBackgroundHover : button.colBackground)
+        color: (root.hovered ? root.colBackgroundHover : root.colBackground)
         layer.enabled: true
         layer.effect: OpacityMask {
             maskSource: Rectangle {
@@ -142,18 +153,10 @@ TabButton {
     }
     
     contentItem: Item {
+        id: tabContent
         anchors.centerIn: buttonBackground
         // Prefer Plumpy when enabled by the parent and an asset exists; fallback to MaterialSymbol
-    readonly property bool usePlumpy: button.usePlumpyIcons
-        function plumpyFromTabIcon(name) {
-            // Cheatsheet tabs and common cases
-            if (name === 'experiment') return 'chemistry'
-            if (name === 'keyboard') return 'keyboard'
-            // Right sidebar tabs
-            if (name === 'notifications') return 'bell' // use Plumpy bell for notifications
-            if (name === 'volume_up') return '' // force Material fallback for Audio tab
-            return name || ''
-        }
+        readonly property bool usePlumpy: root.usePlumpyIcons
         ColumnLayout {
             anchors.centerIn: parent
             spacing: 0
@@ -165,19 +168,19 @@ TabButton {
                 PlumpyIcon {
                     id: tabPlumpy
                     anchors.centerIn: parent
-                    visible: parent.visible && parentItem.usePlumpy
+                    visible: parent.visible && tabContent.usePlumpy && name !== ''
                     iconSize: parent.implicitWidth
-                    name: parentItem.plumpyFromTabIcon(buttonIcon)
-                    primaryColor: selected ? button.colActive : button.colInactive
+                    name: root.plumpyFromTabIcon(buttonIcon)
+                    primaryColor: selected ? root.colActive : root.colInactive
                 }
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    visible: parent.visible && (!parentItem.usePlumpy || !tabPlumpy.available)
+                    visible: parent.visible && (!tabContent.usePlumpy || !tabPlumpy.available || tabPlumpy.name === '')
                     horizontalAlignment: Text.AlignHCenter
                     text: buttonIcon
                     iconSize: parent.implicitWidth
                     fill: selected ? 1 : 0
-                    color: selected ? button.colActive : button.colInactive
+                    color: selected ? root.colActive : root.colInactive
                 }
             }
             StyledText {
@@ -185,7 +188,7 @@ TabButton {
                 Layout.alignment: Qt.AlignHCenter
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: Appearance?.font.pixelSize.small
-                color: selected ? button.colActive : button.colInactive
+                color: selected ? root.colActive : root.colInactive
                 text: buttonText
                 Behavior on color {
                     animation: Appearance?.animation.elementMoveFast.colorAnimation.createObject(this)

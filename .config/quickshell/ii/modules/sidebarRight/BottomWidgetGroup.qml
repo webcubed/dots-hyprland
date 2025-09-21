@@ -86,11 +86,12 @@ Rectangle {
             onClicked: {
                 root.setCollapsed(false)
             }
-            contentItem: MaterialSymbol {
-                text: "keyboard_arrow_up"
-                iconSize: Appearance.font.pixelSize.larger
-                horizontalAlignment: Text.AlignHCenter
-                color: Appearance.colors.colOnLayer1
+            contentItem: Item {
+                anchors.centerIn: parent
+                width: Appearance.font.pixelSize.larger
+                height: width
+                PlumpyIcon { id: collapsedUpPlumpy; anchors.centerIn: parent; iconSize: parent.width; name: 'chevron-up'; primaryColor: Appearance.colors.colOnLayer1 }
+                MaterialSymbol { anchors.centerIn: parent; visible: !collapsedUpPlumpy.available; text: "keyboard_arrow_up"; iconSize: parent.width; horizontalAlignment: Text.AlignHCenter; color: Appearance.colors.colOnLayer1 }
             }
         }
 
@@ -161,11 +162,12 @@ Rectangle {
                 onClicked: {
                     root.setCollapsed(true)
                 }
-                contentItem: MaterialSymbol {
-                    text: "keyboard_arrow_down"
-                    iconSize: Appearance.font.pixelSize.larger
-                    horizontalAlignment: Text.AlignHCenter
-                    color: Appearance.colors.colOnLayer1
+                contentItem: Item {
+                    anchors.centerIn: parent
+                    width: Appearance.font.pixelSize.larger
+                    height: width
+                    PlumpyIcon { id: expandedDownPlumpy; anchors.centerIn: parent; iconSize: parent.width; name: 'chevron-down'; primaryColor: Appearance.colors.colOnLayer1 }
+                    MaterialSymbol { anchors.centerIn: parent; visible: !expandedDownPlumpy.available; text: "keyboard_arrow_down"; iconSize: parent.width; horizontalAlignment: Text.AlignHCenter; color: Appearance.colors.colOnLayer1 }
                 }
             }
         }
