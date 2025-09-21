@@ -9,6 +9,8 @@ ColumnLayout {
     spacing: 0
     required property var tabButtonList // Something like [{"icon": "notifications", "name": Translation.tr("Notifications")}, {"icon": "volume_up", "name": Translation.tr("Volume mixer")}]
     required property var externalTrackedTab
+    // Allow callers to opt-in to Plumpy icons for tab buttons
+    property bool usePlumpyIcons: false
     property bool enableIndicatorAnimation: false
     property color colIndicator: Appearance?.colors.colPrimary ?? "#65558F"
     property color colBorder: Appearance?.m3colors.m3outlineVariant ?? "#C6C6D0"
@@ -46,6 +48,7 @@ ColumnLayout {
                 buttonText: modelData.name
                 buttonIcon: modelData.icon
                 minimumWidth: 160
+                usePlumpyIcons: root.usePlumpyIcons
                 // By default, PrimaryTabBar keeps Material icons; callers can set this property after creation if needed.
             }
         }

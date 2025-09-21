@@ -1,41 +1,55 @@
-import qs
-import qs.services
-import qs.modules.common
-import qs.modules.common.widgets
+import "./bluetoothDevices/"
 import "./quickToggles/"
 import "./wifiNetworks/"
-import "./bluetoothDevices/"
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
 import Quickshell.Hyprland
+import qs
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
 
 Item {
     id: root
+
     property int sidebarWidth: Appearance.sizes.sidebarWidth
     property int sidebarPadding: 12
     property string settingsQmlPath: Quickshell.shellPath("settings.qml")
     property bool showWifiDialog: false
     property bool showBluetoothDialog: false
 
+    implicitHeight: sidebarRightBackground.implicitHeight
+    implicitWidth: sidebarRightBackground.implicitWidth
+    onShowWifiDialogChanged: {
+        if (showWifiDialog) {
+            wifiDialogLoader.active = true;
+        }
+    }
+    onShowBluetoothDialogChanged: {
+        if (showBluetoothDialog)
+            bluetoothDialogLoader.active = true;
+        else
+            Bluetooth.defaultAdapter.discovering = false;
+    }
+
     Connections {
-        target: GlobalStates
         function onSidebarRightOpenChanged() {
             if (!GlobalStates.sidebarRightOpen) {
                 root.showWifiDialog = false;
                 root.showBluetoothDialog = false;
             }
         }
-    }
 
-    implicitHeight: sidebarRightBackground.implicitHeight
-    implicitWidth: sidebarRightBackground.implicitWidth
+        target: GlobalStates
+    }
 
     StyledRectangularShadow {
         target: sidebarRightBackground
     }
+
     Rectangle {
         id: sidebarRightBackground
 
@@ -61,6 +75,7 @@ Item {
 
                 CustomIcon {
                     id: distroIcon
+
                     width: 25
                     height: 25
                     source: SystemInfo.distroIcon
@@ -87,23 +102,29 @@ Item {
                             Hyprland.dispatch("reload");
                             Quickshell.reload(true);
                         }
+
                         StyledToolTip {
                             text: Translation.tr("Reload Hyprland & Quickshell")
                         }
-                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        // Always prefer Plumpy for this header action; fallback to MaterialSymbol
+
                         contentItem: Item {
+                            readonly property bool usePlumpy: true
+
                             anchors.centerIn: parent
-                            width: 20; height: 20
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            width: 20
+                            height: 20
 
                             PlumpyIcon {
                                 id: restartPlumpy
+
                                 anchors.centerIn: parent
                                 visible: parent.usePlumpy
                                 iconSize: 20
                                 name: "restart"
                                 primaryColor: Appearance.colors.colOnLayer0
                             }
+
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 visible: !parent.usePlumpy || !restartPlumpy.available
@@ -111,8 +132,11 @@ Item {
                                 color: Appearance.colors.colOnLayer0
                                 text: "restart_alt"
                             }
+
                         }
+
                     }
+
                     QuickToggleButton {
                         toggled: false
                         buttonIcon: "settings"
@@ -120,23 +144,29 @@ Item {
                             GlobalStates.sidebarRightOpen = false;
                             Quickshell.execDetached(["qs", "-p", root.settingsQmlPath]);
                         }
+
                         StyledToolTip {
                             text: Translation.tr("Settings")
                         }
-                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        // Always prefer Plumpy for this header action; fallback to MaterialSymbol
+
                         contentItem: Item {
+                            readonly property bool usePlumpy: true
+
                             anchors.centerIn: parent
-                            width: 20; height: 20
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            width: 20
+                            height: 20
 
                             PlumpyIcon {
                                 id: settingsPlumpy
+
                                 anchors.centerIn: parent
                                 visible: parent.usePlumpy
                                 iconSize: 20
                                 name: "settings"
                                 primaryColor: Appearance.colors.colOnLayer0
                             }
+
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 visible: !parent.usePlumpy || !settingsPlumpy.available
@@ -144,31 +174,40 @@ Item {
                                 color: Appearance.colors.colOnLayer0
                                 text: "settings"
                             }
+
                         }
+
                     }
+
                     QuickToggleButton {
                         toggled: false
                         buttonIcon: "power_settings_new"
                         onClicked: {
                             GlobalStates.sessionOpen = true;
                         }
+
                         StyledToolTip {
                             text: Translation.tr("Session")
                         }
-                        // Use Plumpy icon when enabled; fallback to MaterialSymbol
+                        // Always prefer Plumpy for this header action; fallback to MaterialSymbol
+
                         contentItem: Item {
+                            readonly property bool usePlumpy: true
+
                             anchors.centerIn: parent
-                            width: 20; height: 20
-                            readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false
+                            width: 20
+                            height: 20
 
                             PlumpyIcon {
                                 id: powerPlumpy
+
                                 anchors.centerIn: parent
                                 visible: parent.usePlumpy
                                 iconSize: 20
                                 name: "power"
                                 primaryColor: Appearance.colors.colOnLayer0
                             }
+
                             MaterialSymbol {
                                 anchors.centerIn: parent
                                 visible: !parent.usePlumpy || !powerPlumpy.available
@@ -176,9 +215,13 @@ Item {
                                 color: Appearance.colors.colOnLayer0
                                 text: "power_settings_new"
                             }
+
                         }
+
                     }
+
                 }
+
             }
 
             ButtonGroup {
@@ -194,6 +237,7 @@ Item {
                         root.showWifiDialog = true;
                     }
                 }
+
                 BluetoothToggle {
                     altAction: () => {
                         Bluetooth.defaultAdapter.enabled = true;
@@ -201,11 +245,22 @@ Item {
                         root.showBluetoothDialog = true;
                     }
                 }
-                NightLight {}
-                GameMode {}
-                IdleInhibitor {}
-                EasyEffectsToggle {}
-                CloudflareWarp {}
+
+                NightLight {
+                }
+
+                GameMode {
+                }
+
+                IdleInhibitor {
+                }
+
+                EasyEffectsToggle {
+                }
+
+                CloudflareWarp {
+                }
+
             }
 
             CenterWidgetGroup {
@@ -220,14 +275,15 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: implicitHeight
             }
+
         }
+
     }
 
-    onShowWifiDialogChanged: if (showWifiDialog) wifiDialogLoader.active = true;
     Loader {
         id: wifiDialogLoader
-        anchors.fill: parent
 
+        anchors.fill: parent
         active: root.showWifiDialog || item.visible
         onActiveChanged: {
             if (active) {
@@ -238,23 +294,22 @@ Item {
 
         sourceComponent: WifiDialog {
             onDismiss: {
-                show = false
-                root.showWifiDialog = false
+                show = false;
+                root.showWifiDialog = false;
             }
             onVisibleChanged: {
-                if (!visible && !root.showWifiDialog) wifiDialogLoader.active = false;
+                if (!visible && !root.showWifiDialog)
+                    wifiDialogLoader.active = false;
+
             }
         }
+
     }
 
-    onShowBluetoothDialogChanged: {
-        if (showBluetoothDialog) bluetoothDialogLoader.active = true;
-        else Bluetooth.defaultAdapter.discovering = false;
-    }
     Loader {
         id: bluetoothDialogLoader
-        anchors.fill: parent
 
+        anchors.fill: parent
         active: root.showBluetoothDialog || item.visible
         onActiveChanged: {
             if (active) {
@@ -265,12 +320,16 @@ Item {
 
         sourceComponent: BluetoothDialog {
             onDismiss: {
-                show = false
-                root.showBluetoothDialog = false
+                show = false;
+                root.showBluetoothDialog = false;
             }
             onVisibleChanged: {
-                if (!visible && !root.showBluetoothDialog) bluetoothDialogLoader.active = false;
+                if (!visible && !root.showBluetoothDialog)
+                    bluetoothDialogLoader.active = false;
+
             }
         }
+
     }
+
 }

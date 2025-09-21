@@ -1,22 +1,25 @@
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.services
 import "./notifications"
 import "./volumeMixer"
-import qs
 import Qt5Compat.GraphicalEffects
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import qs
+import qs.modules.common
+import qs.modules.common.widgets
+import qs.services
 
 Rectangle {
     id: root
 
     property int selectedTab: 0
-    property var tabButtonList: [
-        {"icon": "notifications", "name": Translation.tr("Notifications")},
-        {"icon": "volume_up", "name": Translation.tr("Audio")}
-    ]
+    property var tabButtonList: [{
+        "icon": "notifications",
+        "name": Translation.tr("Notifications")
+    }, {
+        "icon": "volume_up",
+        "name": Translation.tr("Audio")
+    }]
 
     radius: Appearance.rounding.normal
     color: Appearance.colors.colLayer1
@@ -51,15 +54,7 @@ Rectangle {
 
             tabButtonList: root.tabButtonList
             externalTrackedTab: root.selectedTab
-            // Use Plumpy icons for these tabs (Notifications and Audio)
-            Component.onCompleted: {
-                // Walk children to set property on buttons once created
-                // Repeater children are under TabBar.contentItem.children[0].children
-                const host = tabBar.contentItem?.children?.[0]
-                if (host && host.children) {
-                    host.children.forEach((btn) => { try { btn.usePlumpyIcons = true } catch(e) {} })
-                }
-            }
+            usePlumpyIcons: true
         }
 
         SwipeView {

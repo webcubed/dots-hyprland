@@ -41,7 +41,7 @@ GroupButton {
 
                     anchors.centerIn: parent
                     iconSize: parent.implicitWidth
-                    name: (buttonIcon === 'notifications_paused' ? 'bell-sleep' : buttonIcon === 'clear_all' ? 'trash' : '')
+                    name: (buttonIcon === 'notifications_paused' ? 'no-bell' : buttonIcon === 'clear_all' ? 'trash' : '')
                     primaryColor: button.colText
                 }
 
