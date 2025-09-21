@@ -67,7 +67,7 @@ Item {
             anchors.centerIn: parent
             visible: name !== ''
             iconSize: 13
-            name: resolvedPlumpyName()
+            name: resourceProgress.resolvedPlumpyName()
             monochrome: false
             primaryColor: Appearance.colors.colOnSecondaryContainer
             Component.onCompleted: {

@@ -86,15 +86,36 @@ Item {
             colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
             colRippleToggled: Appearance.colors.colSecondaryContainerActive
 
-            contentItem: MaterialSymbol {
+            contentItem: Item {
                 anchors.centerIn: parent
-                iconSize: Appearance.font.pixelSize.larger
-                text: "expand_more"
-                horizontalAlignment: Text.AlignHCenter
-                color: root.trayOverflowOpen ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer2
-                rotation: (root.trayOverflowOpen ? 180 : 0) - (90 * root.vertical) + (180 * root.invertSide)
-                Behavior on rotation {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                // Make the chevron a bit larger than the previous Material size
+                width: Math.round(Appearance.font.pixelSize.larger * 1.25)
+                height: Math.round(Appearance.font.pixelSize.larger * 1.25)
+
+                // Plumpy chevron-down; rotate as before for orientation
+                PlumpyIcon {
+                    id: trayChevronPlumpy
+                    anchors.centerIn: parent
+                    iconSize: Appearance.font.pixelSize.large
+                    name: 'chevron-down'
+                    primaryColor: root.trayOverflowOpen ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer2
+                    rotation: (root.trayOverflowOpen ? 180 : 0) - (90 * root.vertical) + (180 * root.invertSide)
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
+                }
+
+                MaterialSymbol {
+                    anchors.centerIn: parent
+                    visible: !trayChevronPlumpy.available
+                    iconSize: Appearance.font.pixelSize.large
+                    text: "expand_more"
+                    horizontalAlignment: Text.AlignHCenter
+                    color: root.trayOverflowOpen ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnLayer2
+                    rotation: (root.trayOverflowOpen ? 180 : 0) - (90 * root.vertical) + (180 * root.invertSide)
+                    Behavior on rotation {
+                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+                    }
                 }
             }
 
