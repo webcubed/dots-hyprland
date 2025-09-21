@@ -15,6 +15,20 @@ Item {
     property bool shown: true
     property bool warning: percentage * 100 >= warningThreshold
 
+    // Map Material icon names used by Resources to Plumpy asset names
+    function plumpyFromMaterial(name) {
+        switch (name) {
+        case 'memory':
+            return 'cpu';
+        case 'swap_horiz':
+            return 'speed-circle';
+        case 'memory_alt':
+            return 'memory-slot';
+        default:
+            return '';
+        }
+    }
+
     clip: true
     visible: width > 0 && height > 0
     implicitWidth: resourceRowLayout.x < 0 ? 0 : resourceRowLayout.implicitWidth
@@ -43,40 +57,6 @@ Item {
 
             Item {
                 // Prefer Plumpy icons when available; fallback to Material symbols
-                function plumpyFromMaterial(name) {
-                    // Normalize CPU vs Memory to explicit Plumpy assets
-                    const key = (name || '').trim();
-                    switch (key) {
-                    case 'planner_review':
-                        return 'cpu';
-                    case 'swap_horiz':
-                        return 'speed-circle';
-                    case 'memory':
-                    case 'memory_alt':
-                        return 'memory-slot';
-                    default:
-                        return '';
-                    }
-                }
-
-                function resolvedPlumpyName() {
-                    const mapped = (plumpyFromMaterial(root.iconName) || '').trim();
-                    if (mapped.length > 0)
-                        return mapped;
-
-                    const raw = (root.iconName || '').toLowerCase();
-                    if (raw.includes('memory'))
-                        return 'memory-slot';
-
-                    if (raw.includes('planner'))
-                        return 'cpu';
-
-                    if (raw.includes('swap'))
-                        return 'speed-circle';
-
-                    return '';
-                }
-
                 anchors.centerIn: parent
                 width: resourceCircProg.implicitSize
                 height: resourceCircProg.implicitSize
@@ -87,15 +67,15 @@ Item {
                     anchors.centerIn: parent
                     visible: name !== ''
                     iconSize: Appearance.font.pixelSize.normal
-                    name: resolvedPlumpyName()
+                    name: root.plumpyFromMaterial(root.iconName)
                     monochrome: false
                     primaryColor: Appearance.colors.colOnSecondaryContainer
                     debug: true
                 }
 
+                // Fallback to Material if no Plumpy name or the asset fails to load
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    // Fallback to Material only if no Plumpy name or icon unavailable
                     visible: resPlumpy.name === '' || !resPlumpy.available
                     font.weight: Font.DemiBold
                     fill: 1

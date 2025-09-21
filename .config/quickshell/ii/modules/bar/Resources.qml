@@ -31,7 +31,7 @@ MouseArea {
         anchors.rightMargin: 4
 
         Resource {
-            iconName: "memory" // CPU icon (use proper Material name)
+            iconName: "memory" // CPU icon
             percentage: ResourceUsage.cpuUsage
             warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }

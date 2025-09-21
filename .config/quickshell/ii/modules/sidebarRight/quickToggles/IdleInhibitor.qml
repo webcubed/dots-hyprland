@@ -1,7 +1,9 @@
 import QtQuick
 import qs
+import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+
 
 QuickToggleButton {
     id: root

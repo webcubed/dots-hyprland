@@ -238,7 +238,7 @@ MouseArea {
                         anchors.centerIn: parent
                         visible: parent.usePlumpy
                         iconSize: parent.implicitWidth
-                        name: 'terminal'
+                        name: 'keyboard'
                         primaryColor: Appearance.colors.colOnSurfaceVariant
                     }
 
