@@ -105,10 +105,12 @@ Singleton {
         const ua = Config.options?.bpmkey?.spotify?.userAgent || ""
         const uaHeader = ua ? `-H 'User-Agent: ${_shEscapeSingle(ua)}'` : ""
         const usingOverride = !!(Config.options?.bpmkey?.spotify?.bearerToken || "").trim()
+        const useMarketFromToken = !!(Config.options?.bpmkey?.spotify?.marketFromToken)
         const qTitle = encodeURIComponent(_qTitle)
         const qArtist = encodeURIComponent(_qArtist)
         const qAlbum = _qAlbum ? `+album:${encodeURIComponent(_qAlbum)}` : ""
-        const marketParam = usingOverride ? "&market=from_token" : ""
+        // Only add market=from_token when explicitly enabled. Some tokens/regions 403 otherwise.
+        const marketParam = (useMarketFromToken ? "&market=from_token" : "")
         const url = `https://api.spotify.com/v1/search?q=track:${qTitle}+artist:${qArtist}${qAlbum}&type=track${marketParam}&limit=1`
         const cmd = [
             "bash", "-lc",
@@ -155,7 +157,7 @@ Singleton {
                         // Determine if a bearer override is in effect
                         const usingOverride = !!(Config.options?.bpmkey?.spotify?.bearerToken || "").trim()
                         // Auto re-auth once on 401/403
-                        if ((status === 401 || status === 403) && !_reauthed && _cid && _csec) {
+                        if ((status === 401 || status === 403) && !_reauthed && _cid && _csec && _pending !== "features") {
                             _reauthed = true
                             _token = ""
                             _tokenExpiryMs = 0
@@ -165,8 +167,15 @@ Singleton {
                             _requestToken(_cid, _csec)
                             return
                         }
+                        // If audio features are forbidden, don't spin; surface the error clearly.
+                        if (_pending === "features" && status === 403) {
+                            root.error = "Spotify audio features not accessible (403)."
+                            root.loading = false
+                            _pending = ""
+                            return
+                        }
                         // If search 403 with market=from_token, retry without market once
-                        if (_pending === "search" && status === 403 && usingOverride && !_triedNoAlbum) {
+                        if (_pending === "search" && status === 403 && !_triedNoAlbum) {
                             console.log("BpmKey: 403 with market=from_token; retrying search without market")
                             _triedNoAlbum = true // reuse flag to avoid infinite loop
                             const savedAlbum = _qAlbum
