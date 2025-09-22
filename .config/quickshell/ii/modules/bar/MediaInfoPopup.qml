@@ -10,6 +10,13 @@ StyledPopup {
     id: root
 
     // Utility formatters
+    function updateTimes() {
+        const pair = root.normalizePair(MprisController.activePlayer?.length || 0,
+                                        MprisController.activePlayer?.position || 0)
+        root.lengthMs = pair.lenMs
+        root.positionMs = pair.posMs
+    }
+
     function normalizePair(lenRaw, posRaw) {
         // Robustly convert to milliseconds based on magnitude
         const tenHoursMs = 10 * 60 * 60 * 1000
@@ -60,10 +67,7 @@ StyledPopup {
             running: !!MprisController.activePlayer && (MprisController.activePlayer?.isPlaying || false)
             repeat: true
             onTriggered: {
-                const pair = root.normalizePair(MprisController.activePlayer?.length || 0,
-                                                MprisController.activePlayer?.position || 0)
-                root.lengthMs = pair.lenMs
-                root.positionMs = pair.posMs
+                root.updateTimes()
             }
         }
     }
@@ -90,18 +94,26 @@ StyledPopup {
                 visible: !!root.artUrl
                 fillMode: Image.PreserveAspectFit
                 smooth: true
-                Component.onCompleted: updateTimes()
+                Component.onCompleted: root.updateTimes()
             }
             Connections {
                 target: MprisController
                 function onActivePlayerChanged() {
                     root.updateTimes()
                     // Refresh BPM/Key for new track
+                    console.log("MediaInfoPopup: onActivePlayerChanged -> fetch")
+                    BpmKey.fetch(root.artist, root.title, root.album)
+                }
+                function onTrackChanged() {
+                    // Track changed within the same player
+                    root.updateTimes()
+                    console.log("MediaInfoPopup: onTrackChanged -> fetch")
                     BpmKey.fetch(root.artist, root.title, root.album)
                 }
             }
             // Initial fetch for BPM/Key once content is ready
             Component.onCompleted: {
+                console.log("MediaInfoPopup: Component.onCompleted -> fetch")
                 BpmKey.fetch(root.artist, root.title, root.album)
             }
         }
@@ -148,7 +160,14 @@ StyledPopup {
                 ColumnLayout {
                     spacing: 4
                     RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaSpeedPlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'speed-science'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaSpeedPlumpy.name === ''; text: "speed"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: (BpmKey.bpm > 0 ? (BpmKey.bpm + " BPM") : "—"); color: Appearance.colors.colOnSurfaceVariant } }
-                    RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaTunePlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'tune'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaTunePlumpy.name === ''; text: "tune"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: (BpmKey.key && BpmKey.key.length > 0 ? BpmKey.key : "—"); color: Appearance.colors.colOnSurfaceVariant } }
+                    RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaTunePlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'tune'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaTunePlumpy.name === ''; text: "tune"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { id: keyLabel; text: (BpmKey.key && BpmKey.key.length > 0 ? BpmKey.key : "—"); color: Appearance.colors.colOnSurfaceVariant } }
+                    Connections {
+                        target: BpmKey
+                        function onBpmChanged() { console.log("MediaInfoPopup: UI sees bpm ->", BpmKey.bpm) }
+                        function onKeyChanged() { console.log("MediaInfoPopup: UI sees key ->", BpmKey.key, " label=", keyLabel.text) }
+                        function onLoadingChanged() { console.log("MediaInfoPopup: UI sees loading ->", BpmKey.loading) }
+                        function onErrorChanged() { if (BpmKey.error && BpmKey.error.length) console.error("MediaInfoPopup: UI sees error ->", BpmKey.error) }
+                    }
                 }
             }
             RowLayout { spacing: 6; Item { implicitWidth: Appearance.font.pixelSize.normal; implicitHeight: Appearance.font.pixelSize.normal; PlumpyIcon { id: mediaSchedulePlumpy; anchors.centerIn: parent; visible: true; iconSize: parent.implicitWidth; name: 'clock'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: mediaSchedulePlumpy.name === ''; text: "schedule"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } } StyledText { text: `${formatTime(positionMs)} / ${formatTime(lengthMs)}`; color: Appearance.colors.colOnSurfaceVariant } Item { Layout.fillWidth: true } StyledText { text: pct(positionMs, lengthMs); color: Appearance.colors.colOnSurfaceVariant } }
