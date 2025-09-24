@@ -26,13 +26,32 @@ DialogListItem {
         spacing: 0
 
         RowLayout {
-            // Name
+            // Name / Strength indicator
             spacing: 10
-            MaterialSymbol {
-                iconSize: Appearance.font.pixelSize.larger
-                property int strength: root.wifiNetwork?.strength ?? 0
-                text: strength > 80 ? "signal_wifi_4_bar" : strength > 60 ? "network_wifi_3_bar" : strength > 40 ? "network_wifi_2_bar" : strength > 20 ? "network_wifi_1_bar" : "signal_wifi_0_bar"
-                color: Appearance.colors.colOnSurfaceVariant
+            Item {
+                id: wifiStrengthIcon
+                implicitWidth: Appearance.font.pixelSize.larger
+                implicitHeight: Appearance.font.pixelSize.larger
+                readonly property int strength: root.wifiNetwork?.strength ?? 0
+                // Map signal strength to plumpy icon names (expected svg names: wifi-0..wifi-4)
+                // Fallback MaterialSymbols kept for when plumpy svg assets are missing.
+                readonly property string plumpyName: strength > 80 ? "wifi-4" : strength > 60 ? "wifi-3" : strength > 40 ? "wifi-2" : strength > 20 ? "wifi-1" : "wifi-0"
+                readonly property string materialName: strength > 80 ? "signal_wifi_4_bar" : strength > 60 ? "network_wifi_3_bar" : strength > 40 ? "network_wifi_2_bar" : strength > 20 ? "network_wifi_1_bar" : "signal_wifi_0_bar"
+
+                PlumpyIcon {
+                    id: plumpySignal
+                    anchors.centerIn: parent
+                    iconSize: parent.implicitWidth
+                    name: wifiStrengthIcon.plumpyName
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol { // Fallback if plumpy asset missing
+                    anchors.centerIn: parent
+                    visible: !plumpySignal.available
+                    iconSize: parent.implicitWidth
+                    text: wifiStrengthIcon.materialName
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
             StyledText {
                 Layout.fillWidth: true

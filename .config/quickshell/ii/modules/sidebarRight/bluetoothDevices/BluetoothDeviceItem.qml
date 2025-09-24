@@ -34,10 +34,41 @@ DialogListItem {
             // Name
             spacing: 10
 
-            MaterialSymbol {
-                iconSize: Appearance.font.pixelSize.larger
-                text: Icons.getBluetoothDeviceMaterialSymbol(root.device?.icon || "")
-                color: Appearance.colors.colOnSurfaceVariant
+            Item {
+                id: btIconWrapper
+                implicitWidth: Appearance.font.pixelSize.larger
+                implicitHeight: Appearance.font.pixelSize.larger
+                // Derive a plumpy icon name from the device icon role
+                // Possible root.device.icon examples assumed: 'audio-headset','audio-headphones','input-gaming','input-keyboard','phone','computer','unknown'
+                readonly property string baseIcon: (root.device?.icon || "").toLowerCase()
+                readonly property string plumpyName: root.device?.connected ? (
+                        baseIcon.includes("head") ? "headphones" :
+                        baseIcon.includes("game") || baseIcon.includes("joy") ? "gamepad" :
+                        baseIcon.includes("key") ? "keyboard" :
+                        baseIcon.includes("phone") ? "phone" :
+                        "bluetooth-connected"
+                    ) : (
+                        baseIcon.includes("head") ? "headphones" :
+                        baseIcon.includes("game") || baseIcon.includes("joy") ? "gamepad" :
+                        baseIcon.includes("key") ? "keyboard" :
+                        baseIcon.includes("phone") ? "phone" :
+                        "bluetooth"
+                    )
+
+                PlumpyIcon {
+                    id: btPlumpy
+                    anchors.centerIn: parent
+                    iconSize: parent.implicitWidth
+                    name: btIconWrapper.plumpyName
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
+                }
+                MaterialSymbol { // Fallback if no plumpy svg found
+                    anchors.centerIn: parent
+                    visible: !btPlumpy.available
+                    iconSize: parent.implicitWidth
+                    text: Icons.getBluetoothDeviceMaterialSymbol(root.device?.icon || "")
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
             }
 
             ColumnLayout {
