@@ -18,11 +18,11 @@ RippleButton {
     property string query
     property bool entryShown: entry?.shown ?? true
     property string itemType: entry?.type ?? Translation.tr("App")
-    property string itemName: entry?.name
+    property string itemName: entry?.name ?? ""
     property string itemIcon: entry?.icon ?? ""
     property var itemExecute: entry?.execute
     property string fontType: entry?.fontType ?? "main"
-    property string itemClickActionName: entry?.clickActionName
+    property string itemClickActionName: entry?.clickActionName ?? "Open"
     property string bigText: entry?.bigText ?? ""
     property string materialSymbol: entry?.materialSymbol ?? ""
     property string cliphistRawString: entry?.cliphistRawString ?? ""
@@ -284,8 +284,8 @@ RippleButton {
                 delegate: RippleButton {
                     id: actionButton
                     required property var modelData
-                    property string iconName: modelData.icon
-                    property string materialIconName: modelData.materialIcon
+                    property string iconName: modelData.icon ?? ""
+                    property string materialIconName: modelData.materialIcon ?? ""
                     implicitHeight: 34
                     implicitWidth: 34
 
@@ -300,7 +300,7 @@ RippleButton {
                         anchors.centerIn: parent
                         Loader {
                             anchors.centerIn: parent
-                            active: !(actionButton.iconName && actionButton.iconName !== "") || actionButton.materialIconName
+                            active: !(actionButton.iconName !== "") || actionButton.materialIconName
                             sourceComponent: Item {
                                 implicitWidth: Appearance.font.pixelSize.hugeass
                                 implicitHeight: Appearance.font.pixelSize.hugeass
@@ -323,7 +323,7 @@ RippleButton {
                         }
                         Loader {
                             anchors.centerIn: parent
-                            active: !actionButton.materialIconName && actionButton.iconName && actionButton.iconName !== ""
+                            active: actionButton.materialIconName.length == 0 && actionButton.iconName && actionButton.iconName !== ""
                             sourceComponent: IconImage {
                                 source: Quickshell.iconPath(actionButton.iconName)
                                 implicitSize: 20
