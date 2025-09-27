@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import qs
 import qs.modules.common
 import qs.modules.common.widgets
+import qs.services
 
 Item {
     property int monthShift: 0
@@ -66,6 +67,7 @@ Item {
                     monthShift--;
                 }
 
+
                 contentItem: Item {
                     anchors.centerIn: parent
                     width: Appearance.font.pixelSize.larger
@@ -98,6 +100,7 @@ Item {
                 onClicked: {
                     monthShift++;
                 }
+
 
                 contentItem: Item {
                     anchors.centerIn: parent
@@ -144,6 +147,7 @@ Item {
                     isToday: modelData.today
                     bold: true
                     enabled: false
+                    taskList: []
                 }
 
             }
@@ -168,6 +172,10 @@ Item {
                     delegate: CalendarDayButton {
                         day: calendarLayout[modelData][index].day
                         isToday: calendarLayout[modelData][index].today
+                        taskList: [
+                          ...Todo.getTasksByDate(new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day)),
+                          ...CalendarService.getTasksByDate(new Date(calendarLayout[modelData][index].year, calendarLayout[modelData][index].month, calendarLayout[modelData][index].day))
+                      ]
                     }
 
                 }

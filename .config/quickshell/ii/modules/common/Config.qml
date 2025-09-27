@@ -387,6 +387,8 @@ Singleton {
                 // https://doc.qt.io/qt-6/qtime.html#toString
                 property string format: "hh:mm"
                 property string shortDateFormat: "dd/MM"
+                property string longDateFormat: "dd/MM/yyyy"
+
                 property string dateFormat: "dddd, dd/MM"
                 property JsonObject pomodoro: JsonObject {
                     property string alertSound: ""
