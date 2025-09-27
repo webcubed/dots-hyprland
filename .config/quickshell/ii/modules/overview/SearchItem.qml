@@ -26,6 +26,8 @@ RippleButton {
     property string bigText: entry?.bigText ?? ""
     property string materialSymbol: entry?.materialSymbol ?? ""
     property string cliphistRawString: entry?.cliphistRawString ?? ""
+    property bool blurImage: entry?.blurImage ?? false
+    property string blurImageText: entry?.blurImageText ?? "Image hidden"
     // Reuse the global flag for now (controls Plumpy usage elsewhere too)
     readonly property bool usePlumpy: true
     // Map a handful of common Material icon names to Plumpy filenames
@@ -256,6 +258,8 @@ RippleButton {
                     entry: root.cliphistRawString
                     maxWidth: contentColumn.width
                     maxHeight: 140
+                    blur: root.blurImage
+                    blurText: root.blurImageText
                 }
             }
         }
