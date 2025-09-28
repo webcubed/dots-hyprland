@@ -24,6 +24,7 @@ Item { // Wrapper
     implicitHeight: searchWidgetContent.implicitHeight + Appearance.sizes.elevationMargin * 2
 
     property string mathResult: ""
+    property var fileSearchResults: []
 
     // Caches to avoid rebuilding models each evaluation (prevents flicker)
     property string _dictSuggestKey: ""
@@ -192,6 +193,13 @@ Item { // Wrapper
         if (entry == undefined) return false;
         const unsafeKeywords = Config.options.workSafety.triggerCondition.linkKeywords;
         return StringUtils.stringListContainsSubstring(entry.toLowerCase(), unsafeKeywords);
+    }
+
+    Connections {
+        target: FileSearch
+        function onResultsChanged() {
+            root.fileSearchResults = FileSearch.results;
+        }
     }
 
     Timer {
@@ -454,7 +462,22 @@ Item { // Wrapper
                             return [];
 
                         ///////////// Special cases ///////////////
-                        if (root.searchingText.startsWith(Config.options.search.prefix.clipboard)) {
+                        if (root.searchingText.startsWith("ff ")) {
+                            const searchString = root.searchingText.slice(3);
+                            FileSearch.search(searchString);
+                            return root.fileSearchResults.map(entry => {
+                                return {
+                                    name: entry.replace(Directories.home, "~"),
+                                    clickActionName: "Open",
+                                    type: "File",
+                                    materialSymbol: 'description',
+                                    execute: () => {
+                                        FileSearch.openFile(entry);
+                                    }
+                                };
+                            });
+                        }
+                        else if (root.searchingText.startsWith(Config.options.search.prefix.clipboard)) {
                             // Clipboard
                             const searchString = root.searchingText.slice(Config.options.search.prefix.clipboard.length);
                             return Cliphist.fuzzyQuery(searchString).map((entry, index, array) => {
@@ -840,6 +863,9 @@ Item { // Wrapper
                             q = q.slice(3);
                             const i = q.indexOf('!');
                             if (i !== -1) q = q.slice(0, i);
+                        }
+                        else if (q.startsWith("ff ")) {
+                            q = q.slice(3);
                         }
                         q
                     }
