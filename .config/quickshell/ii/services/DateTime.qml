@@ -12,19 +12,26 @@ pragma ComponentBehavior: Bound
 Singleton {
     property var clock: SystemClock {
         id: clock
-        precision: GlobalStates.screenLocked ? SystemClock.Seconds : SystemClock.Seconds // Hack to ensure clock is correct after waking up from suspend
+        precision: GlobalStates.screenLocked ? SystemClock.Seconds : SystemClock.Minutes // Hack to ensure clock is correct after waking up from suspend
     }
     property string time: Qt.locale().toString(clock.date, Config.options?.time.format ?? "hh:mm")
+<<<<<<< HEAD:.config/quickshell/ii/services/DateTime.qml
     property string shortDate: Qt.locale().toString(clock.date, Config.options?.time.shortDateFormat ?? "dd/MM")
+=======
 	// Time w/ seconds
 	property string timeWithSeconds: Qt.locale().toString(new Date(), "hh:mm:ss")
+>>>>>>> 9eb9905e (my changes):.config/quickshell/services/DateTime.qml
     property string date: Qt.locale().toString(clock.date, Config.options?.time.dateFormat ?? "dddd, dd/MM")
-	property string dateMid: Qt.locale().toString(clock.date, "dddd, dd/MM")
-	property string dateLong: Qt.locale().toString(clock.date, "dddd, dd/MM/yyyy")
-	property string dateTextLong: Qt.locale().toString(clock.date, "dddd, dd MMMM yyyy")
     property string collapsedCalendarFormat: Qt.locale().toString(clock.date, "dd MMMM yyyy")
     property string uptime: "0y, 0m, 0d, 0s"
 
+<<<<<<< HEAD:.config/quickshell/ii/services/DateTime.qml
+    Timer {
+=======
+    SystemClock {
+        id: clock
+        precision: SystemClock.Seconds
+    }
 	Timer {
 		interval: 10
 		running: true
@@ -35,6 +42,7 @@ Singleton {
 		}
 	}
     Timer { // Uptime
+>>>>>>> 9eb9905e (my changes):.config/quickshell/services/DateTime.qml
         interval: 10
         running: true
         repeat: true

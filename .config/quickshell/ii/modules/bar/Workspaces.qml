@@ -157,6 +157,7 @@ Item {
         // Make active ws indicator, which has a brighter color, smaller to look like it is of the same size as ws occupied highlight
         radius: Appearance.rounding.howthingsshouldbe
         color: Appearance.colors.colPrimary
+<<<<<<< HEAD:.config/quickshell/ii/modules/bar/Workspaces.qml
 
         anchors {
             verticalCenter: vertical ? undefined : parent.verticalCenter
@@ -165,6 +166,12 @@ Item {
 
         // idx1 is the "leading" indicator position, idx2 is the "following" one
         // The former animates faster than the latter, see the NumberAnimations below
+=======
+        anchors.verticalCenter: parent.verticalCenter
+/*        color: "#00000000"
+		border.color: Appearance.m3colors.m3primary
+		border.width: 2*/
+>>>>>>> 9eb9905e (my changes):.config/quickshell/modules/bar/Workspaces.qml
         property real idx1: workspaceIndexInGroup
         property real idx2: workspaceIndexInGroup
         property real indicatorPosition: Math.min(idx1, idx2) * workspaceButtonWidth + root.activeWorkspaceMargin

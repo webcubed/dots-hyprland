@@ -195,10 +195,65 @@ Item { // Wrapper
         root.searchingText = text;
     }
 
+<<<<<<< HEAD:.config/quickshell/ii/modules/overview/SearchWidget.qml
     function containsUnsafeLink(entry) {
         if (entry == undefined) return false;
         const unsafeKeywords = Config.options.workSafety.triggerCondition.linkKeywords;
         return StringUtils.stringListContainsSubstring(entry.toLowerCase(), unsafeKeywords);
+=======
+    property var searchActions: [
+        {
+            action: "img", 
+            execute: () => {
+                executor.executeCommand(Directories.wallpaperSwitchScriptPath)
+            }
+        },
+        {
+            action: "dark",
+            execute: () => {
+                executor.executeCommand(`${Directories.wallpaperSwitchScriptPath} --mode dark --noswitch`)
+            }
+        },
+        {
+            action: "light",
+            execute: () => {
+                executor.executeCommand(`${Directories.wallpaperSwitchScriptPath} --mode light --noswitch`)
+            }
+        },
+        {
+            action: "accentcolor",
+            execute: (args) => {
+                executor.executeCommand(
+                    `${Directories.wallpaperSwitchScriptPath} --noswitch --color ${args != '' ? ("'"+args+"'") : ""}`
+                )
+            }
+        },
+        {
+            action: "do",
+            execute: (args) => {
+                Todo.addTask(args)
+            }
+        },
+		{
+			action: "done",
+			execute: (args) => {
+				Todo.markDoneByContent(args)
+			}
+		},
+		{
+			action: "dci",
+			execute: (args) => {
+				// Clear clipboard entry of index specified by args
+				// dci for delete clipboard item
+				Quickshell.execDetached(["bash", "-c", `cliphist delete-query $(cliphist decode ${args})`])
+
+			}
+		},
+    ]
+
+    function focusFirstItemIfNeeded() {
+        if (searchInput.focus) appResults.currentIndex = 0; // Focus the first item
+>>>>>>> 9eb9905e (my changes):.config/quickshell/modules/overview/SearchWidget.qml
     }
 
     Connections {
@@ -464,9 +519,18 @@ Item { // Wrapper
                     values: {
                         // Search results are handled here
                         ////////////////// Skip? //////////////////
+<<<<<<< HEAD:.config/quickshell/ii/modules/overview/SearchWidget.qml
                         if (root.searchingText == "")
                             return [];
 
+=======
+                        if(root.searchingText == "") return [];
+                        if (root.searchingText.startsWith("d ")) { // dictionary
+							const searchString = root.searchingText.slice(2);
+							// Fetch and return list of potential words, description being the definitions
+							
+						}
+>>>>>>> 9eb9905e (my changes):.config/quickshell/modules/overview/SearchWidget.qml
                         ///////////// Special cases ///////////////
                         if (root.searchingText.startsWith("ff ")) {
                             const searchString = root.searchingText.slice(3);
@@ -520,9 +584,14 @@ Item { // Wrapper
                                     blurImageText: Translation.tr("Work safety")
                                 };
                             }).filter(Boolean);
+<<<<<<< HEAD:.config/quickshell/ii/modules/overview/SearchWidget.qml
                         }
                         else if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) {
                             // Clipboard
+=======
+                        } 
+                        if (root.searchingText.startsWith(Config.options.search.prefix.emojis)) { // Emojis
+>>>>>>> 9eb9905e (my changes):.config/quickshell/modules/overview/SearchWidget.qml
                             const searchString = root.searchingText.slice(Config.options.search.prefix.emojis.length);
                             return Emojis.fuzzyQuery(searchString).map(entry => {
                                 return {

@@ -1,28 +1,17 @@
-import QtQuick
-import QtQuick.Layouts
 import qs.modules.common
 import qs.services
+import QtQuick
+import QtQuick.Layouts
 
 MouseArea {
     id: root
-
     property bool borderless: Config.options.bar.borderless
     property bool alwaysShowAllResources: false
-
     implicitWidth: rowLayout.implicitWidth + rowLayout.anchors.leftMargin + rowLayout.anchors.rightMargin
     implicitHeight: Appearance.sizes.barHeight
     hoverEnabled: true
 
     RowLayout {
-        // Network throughput (replaces swap, keeps swap icon)
-        /*Resource {
-            iconName: "swap_horiz"
-            // Use NetUsage normalized load (0..1)
-            percentage: NetUsage.load
-            shown: false
-            Layout.leftMargin: 0
-        }*/
-
         id: rowLayout
 
         spacing: 0
@@ -31,17 +20,33 @@ MouseArea {
         anchors.rightMargin: 4
 
         Resource {
-            iconName: "memory" // CPU icon
-            percentage: ResourceUsage.cpuUsage
-            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
+            iconName: "memory_alt"
+            percentage: ResourceUsage.memoryUsedPercentage
+            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
         }
 
         Resource {
-            iconName: "memory_alt" // Memory icon
-            percentage: ResourceUsage.memoryUsedPercentage
-            shown: true
+            iconName: "swap_horiz"
+            percentage: ResourceUsage.swapUsedPercentage
+            shown: (Config.options.bar.resources.alwaysShowSwap && percentage > 0) || 
+                (MprisController.activePlayer?.trackTitle == null) ||
+                root.alwaysShowAllResources
             Layout.leftMargin: shown ? 6 : 0
-            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
+            warningThreshold: Config.options.bar.resources.swapWarningThreshold
+        }
+
+        Resource {
+<<<<<<< HEAD:.config/quickshell/ii/modules/bar/Resources.qml
+            iconName: "planner_review"
+=======
+            iconName: "memory"
+>>>>>>> 9eb9905e (my changes):.config/quickshell/modules/bar/Resources.qml
+            percentage: ResourceUsage.cpuUsage
+            shown: Config.options.bar.resources.alwaysShowCpu || 
+                !(MprisController.activePlayer?.trackTitle?.length > 0) ||
+                root.alwaysShowAllResources
+            Layout.leftMargin: shown ? 6 : 0
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }
 
     }
@@ -49,5 +54,4 @@ MouseArea {
     ResourcesPopup {
         hoverTarget: root
     }
-
 }
