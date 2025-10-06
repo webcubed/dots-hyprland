@@ -129,7 +129,7 @@ Item { // Wrapper
         {
             action: "konachanwallpaper",
             execute: () => {
-                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random_konachan_wall.sh")]);
+                Quickshell.execDetached([Quickshell.shellPath("scripts/colors/random/random_konachan_wall.sh")]);
             }
         },
         {
@@ -166,6 +166,12 @@ Item { // Wrapper
             action: "wallpaper",
             execute: () => {
                 GlobalStates.wallpaperSelectorOpen = true;
+            }
+        },
+        {
+            action: "wipeclipboard",
+            execute: () => {
+                Cliphist.wipe();
             }
         },
     ]

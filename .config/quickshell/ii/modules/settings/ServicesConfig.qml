@@ -152,6 +152,7 @@ ContentPage {
         title: Translation.tr("Resources")
 
         ConfigSpinBox {
+            icon: "av_timer"
             text: Translation.tr("Polling interval (ms)")
             value: Config.options.resources.updateInterval
             from: 100

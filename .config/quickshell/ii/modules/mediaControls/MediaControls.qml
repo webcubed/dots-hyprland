@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -168,8 +169,8 @@ Scope {
                         required property MprisPlayer modelData
                         player: modelData
                         visualizerPoints: root.visualizerPoints
-                        implicitWidth: widgetWidth
-                        implicitHeight: widgetHeight
+                        implicitWidth: root.widgetWidth
+                        implicitHeight: root.widgetHeight
                         radius: root.popupRounding
                     }
                 }
