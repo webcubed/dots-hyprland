@@ -202,8 +202,8 @@ Item { // Bar content region
 
         MouseArea {
             id: rightCenterGroup
-            anchors.verticalCenter: parent.verticalCenter
-            implicitWidth: root.centerSideModuleWidth
+            // Constrain to clock content + BarGroup edge paddings
+            implicitWidth: clock.implicitWidth + (rightCenterGroupContent.padding * 2)
             implicitHeight: rightCenterGroupContent.implicitHeight
 
             onPressed: {

@@ -1467,8 +1467,8 @@ Item {
 						trackColor: Appearance.colors.colLayer1
 						// Initial value
 						value: (MprisController.activePlayer?.length > 0 && MprisController.activePlayer?.position >= 0) ? MprisController.activePlayer.position / MprisController.activePlayer.length : 0
-						sperm: MprisController.activePlayer?.isPlaying ? true : false
-						spermAmplitudeMultiplier: MprisController.activePlayer?.isPlaying ? 0.2 : 0.0
+						wavy: MprisController.activePlayer?.isPlaying ? true : false
+						waveAmplitudeMultiplier: MprisController.activePlayer?.isPlaying ? 0.2 : 0.0
 						valueBarHeight: 3
 						valueBarWidth: parent.width
 						valueBarGap: 8
