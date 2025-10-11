@@ -172,13 +172,8 @@ Scope {
                     SessionActionButton {
                         id: sessionLogout
                         buttonIcon: "logout"
-<<<<<<< HEAD:.config/quickshell/ii/modules/sessionScreen/SessionScreen.qml
-                        buttonText: Translation.tr("Logout")
-                        onClicked: { Session.logout(); sessionRoot.hide() }
-=======
                         buttonText: qsTr("Logout")
                         onClicked: { Hyprland.dispatch("exit"); sessionRoot.hide() }
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/session/Session.qml
                         onFocusChanged: { if (focus) sessionRoot.subtitle = buttonText }
                         KeyNavigation.left: sessionSleep
                         KeyNavigation.right: sessionTaskManager

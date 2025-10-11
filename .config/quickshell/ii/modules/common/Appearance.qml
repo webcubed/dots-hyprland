@@ -116,7 +116,6 @@ Singleton {
     }
 
     colors: QtObject {
-<<<<<<< HEAD:.config/quickshell/ii/modules/common/Appearance.qml
         property color colSubtext: m3colors.m3outline
         property color colLayer0: ColorUtils.mix(ColorUtils.transparentize(m3colors.m3background, root.backgroundTransparency), m3colors.m3primary, Config.options.appearance.extraBackgroundTint ? 0.99 : 1)
         property color colOnLayer0: m3colors.m3onBackground
@@ -129,21 +128,6 @@ Singleton {
         property color colLayer2: ColorUtils.transparentize(m3colors.m3surfaceContainer, root.contentTransparency)
         property color colOnLayer2: m3colors.m3onSurface;
         property color colOnLayer2Disabled: ColorUtils.mix(colOnLayer2, m3colors.m3background, 0.4);
-=======
-        property color colSubtext: "#b8c0e0"
-        property color colLayer0: "#24273a"
-        property color colOnLayer0: "#cad3f5"
-        property color colLayer0Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.9, root.contentTransparency))
-        property color colLayer0Active: ColorUtils.transparentize(ColorUtils.mix(colLayer0, colOnLayer0, 0.8, root.contentTransparency))
-        property color colLayer1: "#1e2030"
-        property color colOnLayer1: "#cad3f5"
-        property color colOnLayer1Inactive: ColorUtils.mix(colOnLayer1, colLayer1, 0.45);
-        property color colLayer2: "#24273a"
-        property color colOnLayer2: m3colors.m3onSurface;
-        property color colOnLayer2Disabled: ColorUtils.mix(colOnLayer2, m3colors.m3background, 0.4);
-        property color colLayer3: "#363a4f"
-        property color colOnLayer3: m3colors.m3onSurface;
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/common/Appearance.qml
         property color colLayer1Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.92), root.contentTransparency)
         property color colLayer1Active: ColorUtils.transparentize(ColorUtils.mix(colLayer1, colOnLayer1, 0.85), root.contentTransparency);
         property color colLayer2Hover: ColorUtils.transparentize(ColorUtils.mix(colLayer2, colOnLayer2, 0.90), root.contentTransparency)
@@ -184,15 +168,10 @@ Singleton {
         property color colSurfaceContainerHighest: ColorUtils.transparentize(m3colors.m3surfaceContainerHighest, root.contentTransparency)
         property color colSurfaceContainerHighestHover: ColorUtils.mix(m3colors.m3surfaceContainerHighest, m3colors.m3onSurface, 0.95)
         property color colSurfaceContainerHighestActive: ColorUtils.mix(m3colors.m3surfaceContainerHighest, m3colors.m3onSurface, 0.85)
-<<<<<<< HEAD:.config/quickshell/ii/modules/common/Appearance.qml
         property color colOnSurface: m3colors.m3onSurface
         property color colOnSurfaceVariant: m3colors.m3onSurfaceVariant
         property color colTooltip: m3colors.m3inverseSurface
         property color colOnTooltip: m3colors.m3inverseOnSurface
-=======
-        property color colTooltip: m3colors.darkmode ? ColorUtils.mix(m3colors.m3background, "#3C4043", 0.5) : "#3C4043" // m3colors.m3inverseSurface in the specs, but the m3 website actually uses #3C4043
-        property color colOnTooltip: "#cad3f5" // m3colors.m3inverseOnSurface in the specs, but the m3 website actually uses this color
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/common/Appearance.qml
         property color colScrim: ColorUtils.transparentize(m3colors.m3scrim, 0.5)
         property color colShadow: ColorUtils.transparentize(m3colors.m3shadow, 0.7)
         property color colOutline: m3colors.m3outline
@@ -209,15 +188,16 @@ Singleton {
 
     rounding: QtObject {
         property int unsharpen: 2
-        property int unsharpenmore: 4
-        property int verysmall: 4
-        property int small: 4
-        property int normal: 4
-        property int large: 4
-        property int verylarge: 4
-        property int full: 4
-        property int screenRounding: 4
-        property int windowRounding: 4
+		property int howthingsshouldbe: 4
+        property int unsharpenmore: 6
+        property int verysmall: 8
+        property int small: 12
+        property int normal: 17
+        property int large: 23
+        property int verylarge: 30
+        property int full: 9999
+        property int screenRounding: large
+        property int windowRounding: 18
     }
 
     font: QtObject {
@@ -225,12 +205,8 @@ Singleton {
             property string main: "Lexend"
             property string title: "Lexend"
             property string iconMaterial: "Material Symbols Rounded"
-<<<<<<< HEAD:.config/quickshell/ii/modules/common/Appearance.qml
-            property string iconNerd: "JetBrains Mono NF"
-=======
             property string iconNerd: "SpaceMono NF"
 			property string iconFA: "Font Awesome 6 Pro"
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/common/Appearance.qml
             property string monospace: "JetBrains Mono NF"
             property string reading: "Readex Pro"
             property string expressive: "Space Grotesk"

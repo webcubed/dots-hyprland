@@ -56,12 +56,12 @@ MouseArea {
             width: mediaCircProg.implicitSize
             height: mediaCircProg.implicitSize
             
-            Item {
+            MaterialSymbol {
                 anchors.centerIn: parent
-                width: Appearance.font.pixelSize.normal; height: width
-                readonly property bool usePlumpy: true
-                PlumpyIcon { id: vMediaCircPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.width; name: activePlayer?.isPlaying ? 'pause' : 'play'; primaryColor: Appearance.m3colors.m3onSecondaryContainer }
-                MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !vMediaCircPlumpy.available; fill: 1; text: activePlayer?.isPlaying ? "pause" : "play_arrow"; iconSize: parent.width; color: Appearance.m3colors.m3onSecondaryContainer }
+                fill: 1
+                text: activePlayer?.isPlaying ? "pause" : "music_note"
+                iconSize: Appearance.font.pixelSize.normal
+                color: Appearance.m3colors.m3onSecondaryContainer
             }
         }
     }
@@ -70,10 +70,9 @@ MouseArea {
         hoverTarget: root
         active: GlobalStates.mediaControlsOpen ? false : root.containsMouse
 
-        ColumnLayout {
+        Column {
             anchors.centerIn: parent
-            RowLayout {
-                spacing: 5
+            spacing: 4
 
             Row {
                 spacing: 4
@@ -88,6 +87,7 @@ MouseArea {
                 }
 
                 StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Media"
                     font {
                         weight: Font.Medium

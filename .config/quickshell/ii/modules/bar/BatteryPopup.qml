@@ -45,7 +45,6 @@ StyledPopup {
                     }
 
                 }
-                color: Appearance.colors.colOnSurfaceVariant
             }
 
             // This row is hidden when the battery is full.

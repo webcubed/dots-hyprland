@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs.modules.common.models
 import qs.modules.common.widgets
@@ -36,11 +37,16 @@ Item { // Player instance
         colBackgroundHover: blendedColors.colSecondaryContainerHover
         colRipple: blendedColors.colSecondaryContainerActive
 
-        contentItem: Item {
-            anchors.fill: parent
-            readonly property bool usePlumpy: true
-            PlumpyIcon { id: trackBtnPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: iconName === 'skip_previous' ? 'previous' : (iconName === 'skip_next' ? 'skip' : 'tune'); primaryColor: blendedColors.colOnSecondaryContainer }
-            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !trackBtnPlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: blendedColors.colOnSecondaryContainer; text: iconName }
+        contentItem: MaterialSymbol {
+            iconSize: Appearance.font.pixelSize.huge
+            fill: 1
+            horizontalAlignment: Text.AlignHCenter
+            color: blendedColors.colOnSecondaryContainer
+            text: iconName
+
+            Behavior on color {
+                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+            }
         }
     }
 
@@ -98,9 +104,14 @@ Item { // Player instance
         color: blendedColors.colLayer0
         radius: root.radius
 
-        // Clip children to rounded corners instead of using OpacityMask
-        clip: true
         layer.enabled: true
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: background.width
+                height: background.height
+                radius: background.radius
+            }
+        }
 
         Image {
             id: blurredArt
@@ -156,7 +167,7 @@ Item { // Player instance
                     }
                 }
 
-                Image { // Art image
+                StyledImage { // Art image
                     id: mediaArt
                     property int size: parent.height
                     anchors.fill: parent
@@ -165,7 +176,6 @@ Item { // Player instance
                     fillMode: Image.PreserveAspectCrop
                     cache: false
                     antialiasing: true
-                    asynchronous: true
 
                     width: size
                     height: size
@@ -229,10 +239,10 @@ Item { // Player instance
                         Item {
                             id: progressBarContainer
                             Layout.fillWidth: true
-                            implicitHeight: progressBar.implicitHeight
+                            implicitHeight: Math.max(sliderLoader.implicitHeight, progressBarLoader.implicitHeight)
 
-                            StyledProgressBar { 
-                                id: progressBar
+                            Loader {
+                                id: sliderLoader
                                 anchors.fill: parent
                                 active: root.player?.canSeek ?? false
                                 sourceComponent: StyledSlider { 
@@ -264,29 +274,7 @@ Item { // Player instance
                             }
 
                             
-                            
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: function(mouse) {
-                                    if (playerController.player && playerController.player.length > 0) {
-                                        var clickPosition = mouse.x / width
-                                        var newPosition = clickPosition * playerController.player.length
-                                        playerController.player.position = newPosition
-                                    }
-                                }
-                                cursorShape: Qt.PointingHandCursor
-                            }
                         }
-                        // Toggle lyrics mode
-                        /* TrackChangeButton {
-                            iconName: "lyrics" // Valid Material symbol name
-                            // Highlight when active
-                            colBackground: GlobalStates.lyricsModeActive ? blendedColors.colSecondaryContainerHover : ColorUtils.transparentize(blendedColors.colSecondaryContainer, 1)
-                            colBackgroundHover: GlobalStates.lyricsModeActive ? blendedColors.colSecondaryContainerActive : blendedColors.colSecondaryContainerHover
-                            colRipple: blendedColors.colSecondaryContainerActive
-                            onClicked: GlobalStates.lyricsModeActive = !GlobalStates.lyricsModeActive
-                            Accessible.name: GlobalStates.lyricsModeActive ? "Hide lyrics" : "Show lyrics"
-                        } */
                         TrackChangeButton {
                             iconName: "skip_next"
                             onClicked: root.player?.next()
@@ -308,11 +296,16 @@ Item { // Player instance
                         colBackgroundHover: root.player?.isPlaying ? blendedColors.colPrimaryHover : blendedColors.colSecondaryContainerHover
                         colRipple: root.player?.isPlaying ? blendedColors.colPrimaryActive : blendedColors.colSecondaryContainerActive
 
-                        contentItem: Item {
-                            anchors.fill: parent
-                            readonly property bool usePlumpy: true
-                            PlumpyIcon { id: playPausePlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: Appearance.font.pixelSize.huge; name: root?.isPlaying ? 'pause' : 'play'; primaryColor: root?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer }
-                            MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !playPausePlumpy.available; iconSize: Appearance.font.pixelSize.huge; fill: 1; horizontalAlignment: Text.AlignHCenter; color: root?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer; text: root?.isPlaying ? "pause" : "play_arrow" }
+                        contentItem: MaterialSymbol {
+                            iconSize: Appearance.font.pixelSize.huge
+                            fill: 1
+                            horizontalAlignment: Text.AlignHCenter
+                            color: root.player?.isPlaying ? blendedColors.colOnPrimary : blendedColors.colOnSecondaryContainer
+                            text: root.player?.isPlaying ? "pause" : "play_arrow"
+
+                            Behavior on color {
+                                animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
+                            }
                         }
                     }
                 }

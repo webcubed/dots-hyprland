@@ -1,18 +1,8 @@
-<<<<<<< HEAD:.config/quickshell/ii/modules/bar/ClockWidget.qml
-import qs
-import qs.modules.common
-import qs.modules.common.widgets
-import qs.services
-import QtQuick
-import QtQuick.Layouts
-import Quickshell
-=======
 import QtQuick
 import QtQuick.Layouts
 import "root:/modules/common"
 import "root:/modules/common/widgets"
 import "root:/services"
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/bar/ClockWidget.qml
 
 Item {
     id: root
@@ -30,7 +20,7 @@ Item {
         spacing: 4
 
         StyledText {
-            font.pixelSize: Appearance.font.pixelSize.large
+            font.pixelSize: Appearance.font.pixelSize.small
             color: "#cad3f5"
             text: DateTime.timeWithSeconds
             

@@ -20,7 +20,7 @@ MouseArea {
         anchors.rightMargin: 4
 
         Resource {
-            iconName: "memory_alt"
+            iconName: "memory"
             percentage: ResourceUsage.memoryUsedPercentage
             warningThreshold: Config.options.bar.resources.memoryWarningThreshold
         }
@@ -36,11 +36,7 @@ MouseArea {
         }
 
         Resource {
-<<<<<<< HEAD:.config/quickshell/ii/modules/bar/Resources.qml
-            iconName: "planner_review"
-=======
-            iconName: "memory"
->>>>>>> 9eb9905e (my changes):.config/quickshell/modules/bar/Resources.qml
+            iconName: "memory_alt"
             percentage: ResourceUsage.cpuUsage
             shown: Config.options.bar.resources.alwaysShowCpu || 
                 !(MprisController.activePlayer?.trackTitle?.length > 0) ||
