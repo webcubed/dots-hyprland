@@ -39,6 +39,7 @@ RowLayout {
                 icon: root.icon
             }
 
+            opacity: root.enabled ? 1 : 0.4
         }
 
         StyledText {
@@ -47,6 +48,7 @@ RowLayout {
             Layout.fillWidth: true
             text: root.text
             color: Appearance.colors.colOnSecondaryContainer
+            opacity: root.enabled ? 1 : 0.4
         }
 
     }

@@ -14,6 +14,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
+import "./cookieClock"
+
 Variants {
     id: root
     readonly property bool fixedClockPosition: Config.options.background.clock.fixedPosition
@@ -22,6 +24,7 @@ Variants {
     readonly property real clockSizePadding: 20
     readonly property real screenSizePadding: 50
     readonly property string clockStyle: Config.options.background.clock.style
+    readonly property bool showCookieQuote: Config.options.background.showQuote && Config.options.background.quote !== "" && !GlobalStates.screenLocked && Config.options.background.clock.style === "cookie"
     model: Quickshell.screens
 
     PanelWindow {
@@ -152,7 +155,7 @@ Variants {
             property int contentHeight: 300
             property int horizontalPadding: bgRoot.movableXSpace
             property int verticalPadding: bgRoot.movableYSpace
-            command: [Quickshell.shellPath("scripts/images/least_busy_region.py"), "--screen-width", Math.round(bgRoot.screen.width / bgRoot.effectiveWallpaperScale), "--screen-height", Math.round(bgRoot.screen.height / bgRoot.effectiveWallpaperScale), "--width", contentWidth, "--height", contentHeight, "--horizontal-padding", horizontalPadding, "--vertical-padding", verticalPadding, path
+            command: [Quickshell.shellPath("scripts/images/least-busy-region-venv.sh"), "--screen-width", Math.round(bgRoot.screen.width / bgRoot.effectiveWallpaperScale), "--screen-height", Math.round(bgRoot.screen.height / bgRoot.effectiveWallpaperScale), "--width", contentWidth, "--height", contentHeight, "--horizontal-padding", horizontalPadding, "--vertical-padding", verticalPadding, path
                 // "--visual-output",
                 ,]
             stdout: StdioCollector {
@@ -175,16 +178,11 @@ Variants {
             anchors.fill: parent
             clip: true
 
-            Image {
+            StyledImage {
                 id: wallpaper
                 visible: opacity > 0 && !blurLoader.active
                 opacity: (status === Image.Ready && !bgRoot.wallpaperIsVideo) ? 1 : 0
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveEnter.numberAnimation.createObject(this)
-                }
                 cache: false
-                asynchronous: true
-                retainWhileLoading: true
                 smooth: false
                 // Range = groups that workspaces span on
                 property int chunkSize: Config?.options.bar.workspaces.shown ?? 10
@@ -300,9 +298,7 @@ Variants {
                         easing.bezierCurve: Appearance.animation.elementMove.bezierCurve
                     }
                 }
-                sourceComponent: ColumnLayout {
-                    spacing: 8
-
+                sourceComponent: Column {
                     Loader {
                         id: digitalClockLoader
                         visible: root.clockStyle === "digital"
@@ -321,7 +317,7 @@ Variants {
                             }
                             StyledText {
                                 // Somehow gets fucked up if made a ClockText???
-                                visible: Config.options.background.quote.length > 0
+                                visible: Config.options.background.showQuote && Config.options.background.quote.length > 0
                                 Layout.fillWidth: true
                                 horizontalAlignment: bgRoot.textHorizontalAlignment
                                 font {
@@ -340,11 +336,19 @@ Variants {
 
                     Loader {
                         id: cookieClockLoader
-                        Layout.alignment: Qt.AlignHCenter
-                        visible: root.clockStyle === "cookie"
+                        visible: root.clockStyle === "cookie" 
                         active: visible
                         sourceComponent: CookieClock {}
                     }
+
+                    Loader {
+                        id: cookieQuoteLoader
+                        visible: root.showCookieQuote
+                        active: visible
+                        sourceComponent: CookieQuote {}
+                        anchors.horizontalCenter: cookieClockLoader.horizontalCenter
+                    }
+                    
                 }
 
                 Item {
@@ -399,13 +403,13 @@ Variants {
                                 id: safetyStatusText
                                 shown: bgRoot.wallpaperSafetyTriggered
                                 statusIcon: "hide_image"
-                                statusText: qsTr("Wallpaper safety enforced")
+                                statusText: Translation.tr("Wallpaper safety enforced")
                             }
                             ClockStatusText {
                                 id: lockStatusText
                                 shown: GlobalStates.screenLocked && Config.options.lock.showLockedText
                                 statusIcon: "lock"
-                                statusText: qsTr("Locked")
+                                statusText: Translation.tr("Locked")
                             }
                             Item {
                                 Layout.fillWidth: bgRoot.textHorizontalAlignment !== Text.AlignRight
@@ -418,7 +422,7 @@ Variants {
         }
     }
 
-    // Components
+    // ComponentsCookieClock {}
     component ClockText: StyledText {
         Layout.fillWidth: true
         horizontalAlignment: bgRoot.textHorizontalAlignment
@@ -432,7 +436,7 @@ Variants {
         styleColor: Appearance.colors.colShadow
         animateChange: true
     }
-    component ClockStatusText: RowLayout {
+    component ClockStatusText: Row {
         id: statusTextRow
         property alias statusIcon: statusIconWidget.text
         property alias statusText: statusTextWidget.text
@@ -443,10 +447,10 @@ Variants {
         Behavior on opacity {
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
-        Layout.fillWidth: false
+        spacing: 4
         MaterialSymbol {
             id: statusIconWidget
-            Layout.fillWidth: false
+            anchors.verticalCenter: statusTextRow.verticalCenter
             iconSize: Appearance.font.pixelSize.huge
             color: statusTextRow.textColor
             style: Text.Raised
@@ -454,8 +458,8 @@ Variants {
         }
         ClockText {
             id: statusTextWidget
-            Layout.fillWidth: false
             color: statusTextRow.textColor
+            anchors.verticalCenter: statusTextRow.verticalCenter
             font {
                 family: Appearance.font.family.main
                 pixelSize: Appearance.font.pixelSize.large

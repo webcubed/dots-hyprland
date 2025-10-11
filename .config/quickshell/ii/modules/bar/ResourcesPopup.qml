@@ -36,13 +36,13 @@ StyledPopup {
         }
     }
 
-    RowLayout {
+    Row {
         anchors.centerIn: parent
         spacing: 12
 
         // CPU first
-        ColumnLayout {
-            Layout.alignment: Qt.AlignTop
+        Column {
+            anchors.top: parent.top
             spacing: 8
 
             ResourceHeaderItem {
@@ -50,7 +50,8 @@ StyledPopup {
                 label: "CPU"
             }
 
-            ColumnLayout {
+            Column {
+                spacing: 4
                 ResourceItem {
                     icon: "bolt"
                     label: Translation.tr("Load:")
@@ -74,9 +75,9 @@ StyledPopup {
         }
 
         // Network throughput section (hidden per request)
-        ColumnLayout {
+        Column {
             visible: false
-            Layout.alignment: Qt.AlignTop
+            anchors.top: parent.top
             spacing: 8
 
             ResourceHeaderItem {
@@ -111,7 +112,8 @@ StyledPopup {
                 label: "RAM"
             }
 
-            ColumnLayout {
+            Column {
+                spacing: 4
                 ResourceItem {
                     icon: "clock_loader_60"
                     label: Translation.tr("Used:")

@@ -70,14 +70,24 @@ MouseArea {
         hoverTarget: root
         active: GlobalStates.mediaControlsOpen ? false : root.containsMouse
 
-        ColumnLayout {
+        Column {
             anchors.centerIn: parent
-            RowLayout {
-                spacing: 5
+            spacing: 4
 
-                Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: vMediaHeaderPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'icons8-music-note'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !vMediaHeaderPlumpy.available; fill: 0; font.weight: Font.Medium; text: "music_note"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
+            Row {
+                spacing: 4
+
+                MaterialSymbol {
+                    anchors.verticalCenter: parent.verticalCenter
+                    fill: 0
+                    font.weight: Font.Medium
+                    text: "music_note"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
 
                 StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
                     text: "Media"
                     font {
                         weight: Font.Medium

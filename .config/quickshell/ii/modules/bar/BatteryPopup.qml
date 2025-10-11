@@ -20,7 +20,7 @@ StyledPopup {
         spacing: 4
 
         // Header
-        RowLayout {
+        Row {
             id: header
 
             spacing: 5
@@ -41,19 +41,26 @@ StyledPopup {
                     primaryColor: Appearance.colors.colOnSurfaceVariant
                 }
 
-                MaterialSymbol {
+            Item {
+                readonly property bool usePlumpy: true
+
+                implicitWidth: Appearance.font.pixelSize.large
+                implicitHeight: Appearance.font.pixelSize.large
+
+                PlumpyIcon {
+                    id: batHdrPlumpy
+
                     anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !batHdrPlumpy.available
-                    fill: 0
-                    font.weight: Font.Medium
-                    text: "battery_android_full"
+                    visible: parent.usePlumpy
                     iconSize: parent.implicitWidth
-                    color: Appearance.colors.colOnSurfaceVariant
+                    name: 'battery'
+                    primaryColor: Appearance.colors.colOnSurfaceVariant
                 }
 
             }
 
             StyledText {
+                anchors.verticalCenter: parent.verticalCenter
                 text: "Battery"
                 color: Appearance.colors.colOnSurfaceVariant
 

@@ -202,9 +202,10 @@ Item { // Bar content region
 
         MouseArea {
             id: rightCenterGroup
-            // Constrain to clock content + BarGroup edge paddings
-            implicitWidth: clock.implicitWidth + (rightCenterGroupContent.padding * 2)
+            anchors.verticalCenter: parent.verticalCenter
+            implicitWidth: root.centerSideModuleWidth
             implicitHeight: rightCenterGroupContent.implicitHeight
+
             onPressed: {
                 GlobalStates.sidebarRightOpen = !GlobalStates.sidebarRightOpen;
             }
@@ -388,6 +389,7 @@ Item { // Bar content region
                     HyprlandXkbIndicator {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.rightMargin: indicatorsRowLayout.realSpacing
+                        color: rightSidebarButton.colText
                     }
                     Item {
                         Layout.rightMargin: indicatorsRowLayout.realSpacing

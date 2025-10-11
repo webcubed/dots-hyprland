@@ -34,7 +34,8 @@ RippleButton {
                 anchors.centerIn: parent
                 visible: cfgSwitchPlumpy.name === '' || !cfgSwitchPlumpy.available
                 icon: root.buttonIcon
-                iconSize: parent.implicitWidth
+                opacity: root.enabled ? 1 : 0.4
+            iconSize: parent.implicitWidth
             }
 
         }
@@ -46,6 +47,7 @@ RippleButton {
             text: root.text
             font: root.font
             color: Appearance.colors.colOnSecondaryContainer
+            opacity: root.enabled ? 1 : 0.4
         }
 
         StyledSwitch {

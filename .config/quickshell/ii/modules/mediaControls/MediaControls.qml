@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
@@ -20,9 +21,7 @@ Scope {
     readonly property real osdWidth: Appearance.sizes.osdWidth
     readonly property real widgetWidth: Appearance.sizes.mediaControlsWidth
     readonly property real widgetHeight: Appearance.sizes.mediaControlsHeight
-    property real contentPadding: 13
     property real popupRounding: Appearance.rounding.screenRounding - Appearance.sizes.elevationMargin + 1
-    property real artRounding: Appearance.rounding.verysmall
     property list<real> visualizerPoints: []
 
     property bool hasPlasmaIntegration: false
@@ -168,8 +167,8 @@ Scope {
                         required property MprisPlayer modelData
                         player: modelData
                         visualizerPoints: root.visualizerPoints
-                        implicitWidth: widgetWidth
-                        implicitHeight: widgetHeight
+                        implicitWidth: root.widgetWidth
+                        implicitHeight: root.widgetHeight
                         radius: root.popupRounding
                     }
                 }
