@@ -22,7 +22,7 @@ Item {
         z: 6
         anchors.centerIn: parent
         text: bubbleIndex === 0.0 ? DateTime.date.substring(5, 7) : DateTime.date.substring(8, 10)
-        color: bubbleIndex === 0.0 ? Appearance.colors.colTertiary : Appearance.colors.colPrimaryContainer
+        color: bubbleIndex === 0.0 ? Appearance.colors.colPrimary : "#24273a"
         opacity: root.style === "bubble" ? 1.0 : 0
         font {
             family: Appearance.font.family.expressive
