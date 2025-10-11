@@ -30,6 +30,7 @@ MouseArea {
     required property LockContext context
     property bool active: false
     property bool showInputField: active || context.currentText.length > 0
+    readonly property bool requirePasswordToPower: Config.options.lock.security.requirePasswordToPower
     // Toolbar appearing animation
     property real toolbarScale: 0.9
     property real toolbarOpacity: 0
@@ -55,12 +56,21 @@ MouseArea {
     }
     // Key presses
     Keys.onPressed: (event) => {
+        // Esc to clear
+
         root.context.resetClearTimer();
         if (event.key === Qt.Key_Escape)
-            // Esc to clear
             root.context.currentText = "";
 
         forceFieldFocus();
+    }
+
+    Connections {
+        function onShouldReFocus() {
+            forceFieldFocus();
+        }
+
+        target: context
     }
 
     Connections {
@@ -124,27 +134,19 @@ MouseArea {
             contentItem: Item {
                 readonly property bool usePlumpy: true
 
-                anchors.centerIn: parent
-                implicitWidth: 24
-                implicitHeight: 24
-
-                PlumpyIcon {
-                    id: lockConfirmPlumpy
-
-                    anchors.centerIn: parent
-                    visible: parent.usePlumpy
-                    iconSize: parent.implicitWidth
-                    name: 'check'
-                    primaryColor: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
-                }
-
                 MaterialSymbol {
                     anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !lockConfirmPlumpy.available
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    iconSize: parent.implicitWidth
-                    text: 'arrow_right_alt'
+                    iconSize: 24
+                    text: {
+                        if (root.context.targetAction === LockContext.ActionEnum.Unlock)
+                            return "arrow_right_alt";
+                        else if (root.context.targetAction === LockContext.ActionEnum.Poweroff)
+                            return "power_settings_new";
+                        else if (root.context.targetAction === LockContext.ActionEnum.Reboot)
+                            return "restart_alt";
+                    }
                     color: confirmButton.enabled ? Appearance.colors.colOnPrimary : Appearance.colors.colSubtext
                 }
 
@@ -176,42 +178,8 @@ MouseArea {
         RowLayout {
             spacing: 6
             Layout.leftMargin: 8
-            Layout.fillHeight: true
-
-            Item {
-                readonly property bool usePlumpy: true
-
-                Layout.alignment: Qt.AlignVCenter
-                implicitWidth: Appearance.font.pixelSize.huge
-                implicitHeight: Appearance.font.pixelSize.huge
-
-                PlumpyIcon {
-                    id: lockUserPlumpy
-
-                    anchors.centerIn: parent
-                    visible: parent.usePlumpy
-                    iconSize: parent.implicitWidth
-                    name: 'person'
-                    primaryColor: Appearance.colors.colOnSurfaceVariant
-                }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !lockUserPlumpy.available
-                    fill: 1
-                    text: 'account_circle'
-                    iconSize: parent.implicitWidth
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-
-            }
-
-            StyledText {
-                Layout.alignment: Qt.AlignVCenter
-                text: SystemInfo.username
-                color: Appearance.colors.colOnSurfaceVariant
-            }
-
+            icon: "account_circle"
+            text: SystemInfo.username
         }
 
         // Keyboard layout (Xkb)
@@ -225,35 +193,18 @@ MouseArea {
             sourceComponent: RowLayout {
                 spacing: 8
 
-                Item {
-                    readonly property bool usePlumpy: true
+                MaterialSymbol {
+                    id: keyboardIcon
 
-                    Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: Appearance.font.pixelSize.huge
-                    implicitHeight: Appearance.font.pixelSize.huge
-
-                    PlumpyIcon {
-                        id: lockKbPlumpy
-
-                        anchors.centerIn: parent
-                        visible: parent.usePlumpy
-                        iconSize: parent.implicitWidth
-                        name: 'keyboard'
-                        primaryColor: Appearance.colors.colOnSurfaceVariant
-                    }
-
-                    MaterialSymbol {
-                        anchors.centerIn: parent
-                        visible: !parent.usePlumpy || !lockKbPlumpy.available
-                        fill: 1
-                        text: 'keyboard_alt'
-                        iconSize: parent.implicitWidth
-                        color: Appearance.colors.colOnSurfaceVariant
-                    }
-
+                    anchors.verticalCenter: parent.verticalCenter
+                    fill: 1
+                    text: "keyboard_alt"
+                    iconSize: Appearance.font.pixelSize.huge
+                    color: Appearance.colors.colOnSurfaceVariant
                 }
 
                 Loader {
+                    anchors.verticalCenter: parent.verticalCenter
 
                     sourceComponent: StyledText {
                         text: HyprlandXkb.currentLayoutCode
@@ -295,124 +246,32 @@ MouseArea {
             leftMargin: 10
         }
 
-        RowLayout {
+        IconAndTextPair {
             visible: UPower.displayDevice.isLaptopBattery
-            spacing: 6
-            Layout.fillHeight: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-
-            Item {
-                readonly property bool usePlumpy: true
-
-                Layout.alignment: Qt.AlignVCenter
-                Layout.leftMargin: -2
-                Layout.rightMargin: -2
-                implicitWidth: Appearance.font.pixelSize.huge
-                implicitHeight: Appearance.font.pixelSize.huge
-
-                PlumpyIcon {
-                    id: lockBatteryPlumpy
-
-                    anchors.centerIn: parent
-                    visible: parent.usePlumpy && Battery.isCharging
-                    iconSize: parent.implicitWidth
-                    name: 'power'
-                    primaryColor: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
-                }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !lockBatteryPlumpy.available || !Battery.isCharging
-                    fill: 1
-                    text: Battery.isCharging ? 'bolt' : 'battery_android_full'
-                    iconSize: parent.implicitWidth
-                    animateChange: true
-                    color: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
-                }
-
-            }
-
-            StyledText {
-                Layout.alignment: Qt.AlignVCenter
-                text: Math.round(Battery.percentage * 100)
-                color: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
-            }
-
+            icon: Battery.isCharging ? "bolt" : "battery_android_full"
+            text: Math.round(Battery.percentage * 100)
+            color: (Battery.isLow && !Battery.isCharging) ? Appearance.colors.colError : Appearance.colors.colOnSurfaceVariant
         }
 
         ToolbarButton {
             id: sleepButton
 
-            implicitWidth: height
             onClicked: Session.suspend()
-
-            contentItem: Item {
-                readonly property bool usePlumpy: true
-
-                anchors.centerIn: parent
-                implicitWidth: 24
-                implicitHeight: 24
-
-                PlumpyIcon {
-                    id: sleepPlumpy
-
-                    anchors.centerIn: parent
-                    visible: parent.usePlumpy
-                    iconSize: parent.implicitWidth
-                    name: 'moon'
-                    primaryColor: Appearance.colors.colOnSurfaceVariant
-                }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !sleepPlumpy.available
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    iconSize: parent.implicitWidth
-                    text: 'dark_mode'
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-
-            }
-
+            text: "dark_mode"
         }
 
         ToolbarButton {
             id: powerButton
 
-            implicitWidth: height
-            onClicked: Session.poweroff()
+            text: "power_settings_new"
+            targetAction: LockContext.ActionEnum.Poweroff
+        }
 
-            contentItem: Item {
-                readonly property bool usePlumpy: true
+        PasswordGuardedActionToolbarIconButton {
+            id: rebootButton
 
-                anchors.centerIn: parent
-                implicitWidth: 24
-                implicitHeight: 24
-
-                PlumpyIcon {
-                    id: powerPlumpy
-
-                    anchors.centerIn: parent
-                    visible: parent.usePlumpy
-                    iconSize: parent.implicitWidth
-                    name: 'power'
-                    primaryColor: Appearance.colors.colOnSurfaceVariant
-                }
-
-                MaterialSymbol {
-                    anchors.centerIn: parent
-                    visible: !parent.usePlumpy || !powerPlumpy.available
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    iconSize: parent.implicitWidth
-                    text: 'power_settings_new'
-                    color: Appearance.colors.colOnSurfaceVariant
-                }
-
-            }
-
+            text: "restart_alt"
+            targetAction: LockContext.ActionEnum.Reboot
         }
 
     }
@@ -428,6 +287,74 @@ MouseArea {
 
     Behavior on toolbarOpacity {
         animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
+    }
+
+    component PasswordGuardedActionToolbarIconButton: ActionToolbarIconButton {
+        id: guardedBtn
+
+        required property var targetAction
+
+        toggled: root.context.targetAction === guardedBtn.targetAction
+        onClicked: {
+            if (!root.requirePasswordToPower) {
+                root.context.unlocked(guardedBtn.targetAction);
+                return ;
+            }
+            if (root.context.targetAction === guardedBtn.targetAction) {
+                root.context.resetTargetAction();
+            } else {
+                root.context.targetAction = guardedBtn.targetAction;
+                root.context.shouldReFocus();
+            }
+        }
+    }
+
+    component ActionToolbarIconButton: ToolbarButton {
+        id: iconBtn
+
+        implicitWidth: height
+        colBackgroundToggled: Appearance.colors.colSecondaryContainer
+        colBackgroundToggledHover: Appearance.colors.colSecondaryContainerHover
+        colRippleToggled: Appearance.colors.colSecondaryContainerActive
+
+        contentItem: MaterialSymbol {
+            anchors.centerIn: parent
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            iconSize: 24
+            text: iconBtn.text
+            color: iconBtn.toggled ? Appearance.colors.colOnSecondaryContainer : Appearance.colors.colOnSurfaceVariant
+        }
+
+    }
+
+    component IconAndTextPair: Row {
+        id: pair
+
+        required property string icon
+        required property string text
+        property color color: Appearance.colors.colOnSurfaceVariant
+
+        spacing: 4
+        Layout.fillHeight: true
+        Layout.leftMargin: 10
+        Layout.rightMargin: 10
+
+        MaterialSymbol {
+            anchors.verticalCenter: parent.verticalCenter
+            fill: 1
+            text: pair.icon
+            iconSize: Appearance.font.pixelSize.huge
+            animateChange: true
+            color: pair.color
+        }
+
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            text: pair.text
+            color: pair.color
+        }
+
     }
 
 }

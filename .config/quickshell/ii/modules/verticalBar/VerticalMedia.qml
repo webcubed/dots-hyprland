@@ -75,7 +75,17 @@ MouseArea {
             RowLayout {
                 spacing: 5
 
-                Item { implicitWidth: Appearance.font.pixelSize.large; implicitHeight: Appearance.font.pixelSize.large; readonly property bool usePlumpy: Config.options.sidebar?.icons?.usePlumpyRightToggles ?? false; PlumpyIcon { id: vMediaHeaderPlumpy; anchors.centerIn: parent; visible: parent.usePlumpy; iconSize: parent.implicitWidth; name: 'icons8-music-note'; primaryColor: Appearance.colors.colOnSurfaceVariant } MaterialSymbol { anchors.centerIn: parent; visible: !parent.usePlumpy || !vMediaHeaderPlumpy.available; fill: 0; font.weight: Font.Medium; text: "music_note"; iconSize: parent.implicitWidth; color: Appearance.colors.colOnSurfaceVariant } }
+            Row {
+                spacing: 4
+
+                MaterialSymbol {
+                    anchors.verticalCenter: parent.verticalCenter
+                    fill: 0
+                    font.weight: Font.Medium
+                    text: "music_note"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: Appearance.colors.colOnSurfaceVariant
+                }
 
                 StyledText {
                     text: "Media"

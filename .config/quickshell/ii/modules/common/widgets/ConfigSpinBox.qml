@@ -39,6 +39,7 @@ RowLayout {
                 icon: root.icon
             }
 
+            opacity: root.enabled ? 1 : 0.4
         }
 
         StyledText {
