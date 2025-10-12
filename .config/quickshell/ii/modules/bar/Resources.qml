@@ -21,8 +21,8 @@ MouseArea {
 
         Resource {
             iconName: "memory"
-            percentage: ResourceUsage.memoryUsedPercentage
-            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
+            percentage: ResourceUsage.cpuUsage
+            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
         }
 
         Resource {
@@ -37,12 +37,12 @@ MouseArea {
 
         Resource {
             iconName: "memory_alt"
-            percentage: ResourceUsage.cpuUsage
+            percentage: ResourceUsage.memoryUsedPercentage
             shown: Config.options.bar.resources.alwaysShowCpu || 
                 !(MprisController.activePlayer?.trackTitle?.length > 0) ||
                 root.alwaysShowAllResources
             Layout.leftMargin: shown ? 6 : 0
-            warningThreshold: Config.options.bar.resources.cpuWarningThreshold
+            warningThreshold: Config.options.bar.resources.memoryWarningThreshold
         }
 
     }
